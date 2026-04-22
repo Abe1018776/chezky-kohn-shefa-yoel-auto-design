@@ -1,0 +1,26 @@
+{
+  "featureId": "m1-plaintext-fallback-typst-side",
+  "reviewedAt": "2026-04-22T23:22:46.1467221Z",
+  "commitId": "202b5a3",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "pass",
+  "codeReview": {
+    "summary": "The fix commit addresses the prior blocking failure by moving `build/book.plain.txt` emission to the Typst side via `<plain-line>` metadata + `typst query`, and it also implements the missing-ref warning/skip-count hardening in `python/convert.py` with the expected stderr format and summary count.",
+    "issues": []
+  },
+  "sharedStateObservations": [
+    {
+      "area": "knowledge",
+      "observation": "Architecture shared-state is stale and still documents a resolved critical converter bug, which can mislead future workers during onboarding.",
+      "evidence": ".factory/library/architecture.md:163-186 still says `convert.py` drops all `#fn[...]` calls as a critical bug; current implementation emits refs in order and warns on missing refs (python/convert.py:80-143)."
+    },
+    {
+      "area": "knowledge",
+      "observation": "Typst notes library checklist appears outdated after M1 completion and still marks notes metadata emission as pending.",
+      "evidence": ".factory/library/typst-notes.md:175 shows unchecked item to emit `build/notes.json`, but this is already implemented and wired into build/test (.factory/services.yaml:45-72)."
+    }
+  ],
+  "addressesFailureFrom": ".factory/validation/m1-two-col-notes/scrutiny/reviews/m1-typst-two-col-apparatus.json",
+  "summary": "Reviewed fix feature `m1-plaintext-fallback-typst-side` (commit `202b5a3`) against the prior failure in `m1-typst-two-col-apparatus` and its review report. The original blocker (JSON-side plain-text witness in `convert.py`) is resolved by Typst-side emission/query wiring, and missing-ref warnings with skip counts are correctly added. No blocking or non-blocking code issues found in this fix."
+}

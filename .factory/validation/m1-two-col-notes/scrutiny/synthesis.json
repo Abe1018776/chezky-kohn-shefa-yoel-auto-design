@@ -1,7 +1,7 @@
 {
   "milestone": "m1-two-col-notes",
-  "round": 1,
-  "status": "fail",
+  "round": 2,
+  "status": "pass",
   "validatorsRun": {
     "test": {
       "passed": true,
@@ -10,30 +10,22 @@
     },
     "typecheck": {
       "passed": true,
-      "command": "services.yaml: commands.typecheck (true, executed via ssh to sefer-design)",
+      "command": "services.yaml: commands.typecheck (executed via ssh to sefer-design)",
       "exitCode": 0
     },
     "lint": {
       "passed": true,
-      "command": "services.yaml: commands.lint (true, executed via ssh to sefer-design)",
+      "command": "services.yaml: commands.lint (executed via ssh to sefer-design)",
       "exitCode": 0
     }
   },
   "reviewsSummary": {
-    "total": 3,
-    "passed": 2,
-    "failed": 1,
-    "failedFeatures": [
-      "m1-typst-two-col-apparatus"
-    ]
+    "total": 1,
+    "passed": 1,
+    "failed": 0,
+    "failedFeatures": []
   },
-  "blockingIssues": [
-    {
-      "featureId": "m1-typst-two-col-apparatus",
-      "severity": "blocking",
-      "description": "`build/book.plain.txt` is generated from JSON-side data in `python/convert.py` instead of Typst-rendered output, so VAL-M1-002 fallback evidence can mask template-side note drops/alterations."
-    }
-  ],
+  "blockingIssues": [],
   "appliedUpdates": [],
   "suggestedGuidanceUpdates": [
     {
@@ -45,25 +37,29 @@
     {
       "target": "skills",
       "suggestion": "Strengthen skill-compliance guardrails so features with assigned skills must show skill invocation plus required prerequisite reads before implementation or validation is considered complete.",
-      "evidence": "Two review reports (m1-convert-py-notes-fix and m1-audit-pagination-alignment) flagged transcript skeletons that lacked required skill-driven steps, indicating recurring process drift.",
+      "evidence": "Multiple review reports flagged transcript skeletons that lacked required skill-driven steps, indicating recurring process drift.",
       "isSystemic": true
     },
     {
       "target": "library",
-      "suggestion": "Refresh `.factory/library/architecture.md` to match post-M1 shipped behavior (convert.py ordered fn/en emission and resolved silent-drop status).",
-      "evidence": "Both m1-convert-py-notes-fix and m1-typst-two-col-apparatus reviews flagged stale architecture sections describing pre-fix note-drop behavior.",
+      "suggestion": "Refresh `.factory/library/architecture.md` to match post-M1 shipped behavior (ordered fn/en emission, Typst-side plaintext witness, and resolved silent-drop status) and update `.factory/library/typst-notes.md` checklist entries that are now complete.",
+      "evidence": "The new fix review and earlier M1 reviews consistently flagged stale architecture/checklist sections versus current implementation and services wiring.",
       "isSystemic": true
     }
   ],
   "rejectedObservations": [
     {
-      "observation": "Duplicate architecture-staleness report from multiple reviews",
+      "observation": "Duplicate architecture-staleness reports across multiple feature reviews.",
       "reason": "duplicate"
     },
     {
-      "observation": "Decorative no-notes bottom rule to satisfy audit heuristic",
-      "reason": "ambiguous—rendering policy choice, not a shared-state artifact update candidate"
+      "observation": "Decorative no-notes bottom rule to satisfy audit heuristic.",
+      "reason": "ambiguous policy decision; not a shared-state update candidate for scrutiny synthesis"
+    },
+    {
+      "observation": "Alignment-map filename/path hardening in audit/image_diff.py.",
+      "reason": "already captured as a non-blocking code issue in m1-audit-pagination-alignment review; not a shared-state artifact update"
     }
   ],
-  "previousRound": null
+  "previousRound": "a05cdd7:.factory/validation/m1-two-col-notes/scrutiny/synthesis.json"
 }
