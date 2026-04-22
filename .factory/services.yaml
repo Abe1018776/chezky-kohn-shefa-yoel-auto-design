@@ -28,17 +28,27 @@ commands:
   convert: |
     cd ~/chezky-kohn-shefa-yoel-auto-design && python3 python/convert.py
 
-  # Compile the book PDF
+  # Compile the book PDF. SOURCE_DATE_EPOCH is fixed so the embedded
+  # PDF /ID becomes deterministic — required for VAL-M1-012 + VAL-CROSS-002
+  # byte-identical-rebuild assertions. See
+  # <https://reproducible-builds.org/specs/source-date-epoch/>.
   build-pdf: |
-    cd ~/chezky-kohn-shefa-yoel-auto-design && ~/.local/bin/typst compile --root . --font-path typst/fonts build/book.typ build/book.pdf
+    cd ~/chezky-kohn-shefa-yoel-auto-design && SOURCE_DATE_EPOCH=1704067200 ~/.local/bin/typst compile --root . --font-path typst/fonts build/book.typ build/book.pdf
 
   # Render per-page PNGs at 120 ppi (used by audit + visual inspection)
   build-png: |
-    cd ~/chezky-kohn-shefa-yoel-auto-design && ~/.local/bin/typst compile --root . --font-path typst/fonts build/book.typ 'build/page-{n}.png' --ppi 120 --format png
+    cd ~/chezky-kohn-shefa-yoel-auto-design && SOURCE_DATE_EPOCH=1704067200 ~/.local/bin/typst compile --root . --font-path typst/fonts build/book.typ 'build/page-{n}.png' --ppi 120 --format png
 
-  # Full pipeline: clean → convert → PDF → PNG
+  # Extract per-note metadata from the compiled template into build/notes.json.
+  # Validators use this to verify per-(stream, chapter) counter invariants,
+  # page-pinning, and body-first-25-char coverage without relying on the
+  # notoriously unreliable pypdf Hebrew-RTL text extraction.
+  build-notes-json: |
+    cd ~/chezky-kohn-shefa-yoel-auto-design && ~/.local/bin/typst query --root . --font-path typst/fonts --format json --pretty build/book.typ '<notes-meta>' --field value --one > build/notes.json
+
+  # Full pipeline: clean → convert → PDF → PNG → notes.json
   build: |
-    cd ~/chezky-kohn-shefa-yoel-auto-design && rm -rf build && mkdir build && python3 python/convert.py && ~/.local/bin/typst compile --root . --font-path typst/fonts build/book.typ build/book.pdf && ~/.local/bin/typst compile --root . --font-path typst/fonts build/book.typ 'build/page-{n}.png' --ppi 120 --format png
+    cd ~/chezky-kohn-shefa-yoel-auto-design && rm -rf build && mkdir build && python3 python/convert.py && SOURCE_DATE_EPOCH=1704067200 ~/.local/bin/typst compile --root . --font-path typst/fonts build/book.typ build/book.pdf && SOURCE_DATE_EPOCH=1704067200 ~/.local/bin/typst compile --root . --font-path typst/fonts build/book.typ 'build/page-{n}.png' --ppi 120 --format png && ~/.local/bin/typst query --root . --font-path typst/fonts --format json --pretty build/book.typ '<notes-meta>' --field value --one > build/notes.json
 
   # Run the image_diff audit against reference_scans/
   audit: |
@@ -46,11 +56,12 @@ commands:
 
   # Full build + audit — the canonical "test" command for the project
   test: |
-    cd ~/chezky-kohn-shefa-yoel-auto-design && rm -rf build && mkdir build && python3 python/convert.py && ~/.local/bin/typst compile --root . --font-path typst/fonts build/book.typ build/book.pdf && ~/.local/bin/typst compile --root . --font-path typst/fonts build/book.typ 'build/page-{n}.png' --ppi 120 --format png && python3 audit/image_diff.py
+    cd ~/chezky-kohn-shefa-yoel-auto-design && rm -rf build && mkdir build && python3 python/convert.py && SOURCE_DATE_EPOCH=1704067200 ~/.local/bin/typst compile --root . --font-path typst/fonts build/book.typ build/book.pdf && SOURCE_DATE_EPOCH=1704067200 ~/.local/bin/typst compile --root . --font-path typst/fonts build/book.typ 'build/page-{n}.png' --ppi 120 --format png && ~/.local/bin/typst query --root . --font-path typst/fonts --format json --pretty build/book.typ '<notes-meta>' --field value --one > build/notes.json && python3 audit/image_diff.py
 
-  # Determinism check: build twice and compare sha256
+  # Determinism check: build twice and compare sha256. Uses fixed
+  # SOURCE_DATE_EPOCH so the PDF /ID trailer stays identical across runs.
   test-determinism: |
-    cd ~/chezky-kohn-shefa-yoel-auto-design && rm -rf build ~/.cache/typst && python3 python/convert.py && ~/.local/bin/typst compile --root . --font-path typst/fonts build/book.typ build/book.pdf && sha256sum build/book.pdf > /tmp/sha1.txt && rm -rf build ~/.cache/typst && python3 python/convert.py && ~/.local/bin/typst compile --root . --font-path typst/fonts build/book.typ build/book.pdf && sha256sum build/book.pdf > /tmp/sha2.txt && diff /tmp/sha1.txt /tmp/sha2.txt && echo "DETERMINISTIC" || echo "NON-DETERMINISTIC"
+    cd ~/chezky-kohn-shefa-yoel-auto-design && rm -rf build ~/.cache/typst && mkdir build && python3 python/convert.py && SOURCE_DATE_EPOCH=1704067200 ~/.local/bin/typst compile --root . --font-path typst/fonts build/book.typ build/book.pdf && sha256sum build/book.pdf > /tmp/sha1.txt && rm -rf build ~/.cache/typst && mkdir build && python3 python/convert.py && SOURCE_DATE_EPOCH=1704067200 ~/.local/bin/typst compile --root . --font-path typst/fonts build/book.typ build/book.pdf && sha256sum build/book.pdf > /tmp/sha2.txt && diff /tmp/sha1.txt /tmp/sha2.txt && echo "DETERMINISTIC" || echo "NON-DETERMINISTIC"
 
   # No formal lint target — Python convert.py is small; Typst has no lint.
   # If pyflakes etc. are desired later, add here.

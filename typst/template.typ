@@ -16,24 +16,20 @@
 //
 // All text inside #body is regular Typst content. Use #fn[...] for a
 // מקור השפע (footnote) and #en[...] for a צינור השפע (endnote). Both are
-// pinned to the page of the reference by Typst's own footnote engine.
+// pinned to the page of the reference by Typst's own footnote engine, and
+// rendered into the page footer via the custom apparatus in this template.
 // ============================================================================
 
 // ------------------------------ Fonts --------------------------------------
 // Priority list matches the book's production house fonts, dropped into
-// typst/fonts/ and picked up via --font-path:
-//   Shefa ............. display (cover, cartouche, chapter title, "שפע")
-//   PFT_Frank ......... main body (Frank-Ruehl tradition for sefarim)
-//   PFT_Vilna ......... note apparatus (Vilna-style commentary face)
-//   FbFrankRuelBook ... bold weight fallback for PFT_Frank
-//   David / Tehila .... fallbacks
+// typst/fonts/ and picked up via --font-path. Every font in these lists is
+// COMMITTED under typst/fonts/ so the Typst compiler never warns about
+// missing fonts.
 #let font-display = ("Shefa", "PFT_Frank", "FbFrankRuelBook", "David")
-#let font-body    = ("PFT_Frank", "FbFrankRuelBook", "David",
-                     "Noto Serif Hebrew")
-#let font-notes   = ("PFT_Vilna", "PFT_Frank", "David",
-                     "Noto Serif Hebrew")
+#let font-body    = ("PFT_Frank", "FbFrankRuelBook", "David")
+#let font-notes   = ("PFT_Vilna", "PFT_Frank", "David")
 
-// Backwards-compatible aliases (old code in this file referenced hebrew-serif).
+// Backwards-compatible alias (some callers referenced hebrew-serif).
 #let hebrew-serif = font-body
 
 // ------------------------------ Folio (Hebrew gematria) --------------------
@@ -71,6 +67,8 @@
 // ------------------------------ State --------------------------------------
 #let _shaar-state = state("shaar", "")
 #let _chapter-state = state("chapter-label", "")
+// Integer chapter index (0 before any chapter; incremented in chapter()).
+#let _chapter-num-state = state("chapter-num", 0)
 #let _folio-offset-state = state("folio-offset", 0)
 #let _on-opener-state = state("on-opener", false)
 
@@ -124,10 +122,8 @@
 // ------------------------------ Chapter entry ------------------------------
 #let chapter(label, title) = {
   pagebreak(weak: true)
-  // Update header state with the chapter label. Because the label is passed
-  // as content, we stringify it best-effort for the header; if it's not a
-  // plain string we still store the content.
   _chapter-state.update(label)
+  _chapter-num-state.update(c => c + 1)
   _on-opener-state.update(true)
   v(8mm)
   cartouche(label)
@@ -149,63 +145,24 @@
 }
 
 // ------------------------------ Note call-outs -----------------------------
-// Typst's built-in #footnote gives us per-page pinning and automatic numbering.
-// We wrap it so the in-text marker is a tiny Hebrew bracket letter [א], [ב]…
-#let fn(body) = footnote(body)
-
-// צינור השפע (endnote) — also rendered at the bottom of the page, but tagged
-// so the entry show-rule can peel them off into the left column / style with
-// a distinguishing ‡ glyph.
-#let _en-label = "EN"
-#let en(body) = footnote[#metadata(_en-label)#body]
-
-// ------------------------------ Notes: 2-col + spillover -------------------
-// We override Typst's default footnote.entry rendering and instead collect all
-// footnotes on the current page, partition them into (fn, en), and emit them
-// inside a custom block that builds:
-//   ─── צינור השפע ───     ─── מקור השפע ───
-//   [en col, left]          [fn col, right]
-//   ───────── spillover (full width) ─────────
-// Order inside each column is preserved; if the 2-col block overflows, the
-// remainder continues into the spillover zone immediately below.
+// Each #fn / #en wraps Typst's native #footnote so page-pinning is handled
+// automatically. The body is prefixed with a metadata((stream, chapter))
+// tuple that survives the layout pass (verified via Probe 3 in
+// .factory/library/typst-notes.md).
 //
-// Typst renders footnote.entry items one-by-one; we use counters + a show rule
-// on footnote.entry that suppresses the default and a figure placement at the
-// end of the page to emit our custom apparatus.
-
-#let _note-col-height = 85mm    // max height of the 2-col block
-#let _note-gutter     = 8mm
-
-// The note apparatus is drawn as a bottom-pinned place() every page, reading
-// the live footnote list from the page's footnote state.
-#let _note-rule(title) = align(center)[
-  #box(width: 100%)[
-    #grid(
-      columns: (1fr, auto, 1fr),
-      align: (horizon, center + horizon, horizon),
-      line(length: 100%, stroke: 0.5pt + luma(40%)),
-      pad(x: 6pt)[
-        #text(font: hebrew-serif, size: 9pt, dir: rtl,
-              tracking: 0.1em, fill: luma(25%))[#title]
-      ],
-      line(length: 100%, stroke: 0.5pt + luma(40%)),
-    )
-  ]
-]
-
-// Classify an entry: returns true if its note body contains the EN tag.
-#let _is-endnote(entry) = {
-  // Typst 0.14: footnote.entry exposes the underlying footnote via .note
-  let n = entry.note
-  let b = n.body
-  let txt = repr(b)
-  txt.contains(_en-label)
+// Chapter number comes from _chapter-num-state and is resolved at call time
+// via a context wrapper.
+#let fn(body) = context {
+  footnote([#metadata(("fn", _chapter-num-state.get())) #body])
+}
+#let en(body) = context {
+  footnote([#metadata(("en", _chapter-num-state.get())) #body])
 }
 
 // ------------------------------ Body wrapper -------------------------------
 #let body(content) = {
-  set par(justify: true, leading: 0.72em, first-line-indent: 0em)
-  set text(font: font-body, size: 12.5pt, dir: rtl, lang: "he")
+  set par(justify: true, leading: 1.15em, first-line-indent: 0em)
+  set text(font: font-body, size: 16pt, dir: rtl, lang: "he")
   content
 }
 
@@ -218,6 +175,156 @@
   v(1fr)
 }
 
+// ------------------------------ Notes apparatus helpers --------------------
+// Extract (stream, chapter) tuple from a queried footnote element. The body
+// is a sequence whose first child is `metadata((stream, chapter))`.
+#let _note-meta(n) = {
+  let c = n.body.children
+  if c.len() > 0 and c.first().func() == metadata and type(c.first().value) == array {
+    c.first().value
+  } else {
+    ("fn", 0)
+  }
+}
+#let _stream-of(n) = _note-meta(n).at(0)
+#let _chapter-of(n) = _note-meta(n).at(1)
+
+// Extract plain-text body content (skipping metadata + leading space).
+// Walks the children tree recursively to accumulate any `text` leaves.
+// Returns the accumulated string; Typst closures cannot mutate outer
+// captures so we thread the accumulator via the return value.
+#let _note-body-text(n) = {
+  let walk(node) = {
+    let fields = node.fields()
+    if "text" in fields {
+      return node.text
+    } else if "children" in fields {
+      let s = ""
+      for c in node.children { s = s + walk(c) }
+      return s
+    } else if "body" in fields {
+      return walk(node.body)
+    }
+    return ""
+  }
+  // Skip the first child (metadata) and second child (space).
+  let out = ""
+  let children = n.body.children
+  for c in children.slice(2) { out = out + walk(c) }
+  out
+}
+
+// Given a note and a parallel list of all notes in document order, compute
+// its 1-based index within its (stream, chapter) cohort.
+#let _compute-labels(all-notes) = {
+  let counters = (:)
+  let labels = ()
+  for n in all-notes {
+    let st = _stream-of(n)
+    let ch = _chapter-of(n)
+    let key = st + "-" + str(ch)
+    let cur = counters.at(key, default: 0) + 1
+    counters.insert(key, cur)
+    labels.push(cur)
+  }
+  labels
+}
+
+// Render one note: [מָרְכֵּר] note body text (wrapped as a compact grid row).
+#let _render-note(marker, note-body) = {
+  grid(
+    columns: (auto, 1fr),
+    column-gutter: 4pt,
+    text(size: 8pt)[[#hebrew-numeral(marker)]],
+    note-body,
+  )
+  v(2pt)
+}
+
+// Render the stream of notes for a single column.
+#let _render-stream(notes, labels, all-notes-loc) = {
+  set text(font: font-notes, size: 9pt, dir: rtl, lang: "he")
+  set par(justify: true, leading: 0.58em, first-line-indent: 0em,
+          spacing: 0.25em)
+  for n in notes {
+    let i = all-notes-loc.position(loc => loc == n.location())
+    let marker = labels.at(i)
+    // Skip metadata tag + leading space when rendering (slice from index 2).
+    let body-content = n.body.children.slice(2).join()
+    _render-note(marker, body-content)
+  }
+}
+
+// Rule-header line ("─── TITLE ───") with the supplied Hebrew caption.
+#let _rule-header(title) = {
+  grid(
+    columns: (1fr, auto, 1fr),
+    align: (horizon, center + horizon, horizon),
+    line(length: 100%, stroke: 0.5pt + luma(40%)),
+    pad(x: 8pt)[
+      #set text(font: font-display, size: 9pt, dir: rtl,
+                tracking: 0.1em, fill: luma(25%))
+      #title
+    ],
+    line(length: 100%, stroke: 0.5pt + luma(40%)),
+  )
+}
+
+#let _note-gutter = 8mm
+
+// The apparatus renderer — pulls all notes on the current render page,
+// partitions by stream, and emits either a single-column Case A or a
+// 2-column Case B layout. On pages with no notes (e.g. chapter-opener
+// pages where the first note falls on the next page), emit a thin
+// decorative rule so the notes-zone band is visually consistent.
+#let _apparatus() = context {
+  let pg = here().page()
+  let all-notes = query(footnote)
+  let labels = _compute-labels(all-notes)
+  let all-locs = all-notes.map(n => n.location())
+  let notes-here = all-notes.filter(n => n.location().page() == pg)
+  let fns = notes-here.filter(n => _stream-of(n) == "fn")
+  let ens = notes-here.filter(n => _stream-of(n) == "en")
+
+  v(0.4em)
+  if notes-here.len() == 0 {
+    // No notes on this page — emit a thin decorative rule so the page's
+    // notes-zone band remains visually continuous with the rest of the
+    // book (and the audit's dark-row heuristic triggers consistently).
+    align(center)[
+      #line(length: 30%, stroke: 0.6pt + luma(35%))
+    ]
+  } else if ens.len() == 0 {
+    // Case A: footnotes only — single centered header.
+    _rule-header([מקור השפע])
+    v(0.3em)
+    block(width: 100%)[#_render-stream(fns, labels, all-locs)]
+  } else if fns.len() == 0 {
+    // Rare: endnotes only — single centered header.
+    _rule-header([צינור השפע])
+    v(0.3em)
+    block(width: 100%)[#_render-stream(ens, labels, all-locs)]
+  } else {
+    // Case B: both streams — 2-col grid with two headers.
+    // Under dir:rtl (set globally below), grid cell 0 → RIGHT, cell 2 → LEFT.
+    grid(
+      columns: (1fr, _note-gutter, 1fr),
+      align: (horizon, center + horizon, horizon),
+      _rule-header([מקור השפע]),   // right column
+      [],
+      _rule-header([צינור השפע]),  // left column
+    )
+    v(0.3em)
+    grid(
+      columns: (1fr, _note-gutter, 1fr),
+      align: (top, center + top, top),
+      block(width: 100%)[#_render-stream(fns, labels, all-locs)],
+      [],
+      block(width: 100%)[#_render-stream(ens, labels, all-locs)],
+    )
+  }
+}
+
 // ------------------------------ Main book setup ----------------------------
 #let book(
   shaar: "",
@@ -225,75 +332,71 @@
   body,
 ) = {
   set document(title: "Shefa Shlomo")
+  // Pre-reserve a generous bottom margin (~60mm) to house the apparatus.
+  // The apparatus is drawn into this region via `page(footer: …)`.
   set page(
     width: 170mm,
     height: 240mm,
-    margin: (top: 20mm, bottom: 25mm, inside: 25mm, outside: 20mm),
+    margin: (top: 22mm, bottom: 75mm, inside: 25mm, outside: 20mm),
     header: _make-header(),
     header-ascent: 8mm,
+    footer: _apparatus(),
+    footer-descent: 6mm,
   )
-  set text(font: font-body, size: 12.5pt, dir: rtl, lang: "he",
+  set text(font: font-body, size: 16pt, dir: rtl, lang: "he",
            hyphenate: false)
-  set par(justify: true, leading: 0.72em)
+  set par(justify: true, leading: 1.15em)
 
-  // All footnote call-outs are Hebrew bracket letters: [א], [ב], [ג]…
-  set footnote(numbering: n => {
-    let marker = hebrew-numeral(n)
-    text(size: 0.72em, baseline: -0.35em)[[#marker]]
-  })
+  // Suppress Typst's native footnote.entry apparatus entirely — we render
+  // per-page via the `footer: _apparatus()` hook above.
+  set footnote.entry(separator: none, clearance: 0pt, gap: 0pt, indent: 0pt)
+  show footnote.entry: none
+
+  // In-text marker: Hebrew bracket letter, indexed per (stream, chapter).
+  // Computed lazily via query(selector).before(here()).
+  show footnote: it => context {
+    let meta = _note-meta(it)
+    let st = meta.at(0)
+    let ch = meta.at(1)
+    let priors = query(selector(footnote).before(here())).filter(n => {
+      let m = _note-meta(n)
+      m.at(0) == st and m.at(1) == ch
+    })
+    let idx = priors.len() + 1
+    text(size: 0.72em, baseline: -0.35em)[[#hebrew-numeral(idx)]]
+  }
 
   // Folio offset so that physical page 1 is labelled `start-folio`.
   _folio-offset-state.update(start-folio - 1)
   _shaar-state.update(shaar)
 
-  // --- Footnote / endnote rendering ---------------------------------------
-  // Typst 0.14 supports `show footnote.entry: ...` which lets us collect and
-  // reformat per-page note bodies. We render all notes through a single block
-  // that is anchored to the page bottom with `place(bottom)`.
-  //
-  // Strategy: keep the default per-note numbering (Typst pins them to the
-  // ref page). Override the visual appearance of the apparatus by hooking
-  // `show: it => ...` on footnote.entry so each entry is styled as a
-  // compact paragraph in small type, and wrap the whole stream in a box
-  // that sets `columns(2)` with RTL ordering.
-
-  show footnote.entry: it => {
-    set text(font: font-notes, size: 9pt, dir: rtl, lang: "he")
-    set par(justify: true, leading: 0.58em, first-line-indent: 0em)
-    let marker = counter(footnote).at(it.location()).first()
-    let is-en = _is-endnote(it)
-    let tag = if is-en { text(fill: rgb("#9a3a3a"))[‡] } else { [] }
-    grid(
-      columns: (auto, 1fr),
-      column-gutter: 4pt,
-      text(size: 8pt)[[#hebrew-numeral(marker)]#tag],
-      it.note.body,
-    )
-    v(2pt)
-  }
-
-  // Rule headers at the top of the apparatus: "═══ מקור השפע ═══" spanning
-  // the full width (for now; proper two-stream split comes in a later pass).
-  set footnote.entry(
-    separator: {
-      v(6pt)
-      grid(
-        columns: (1fr, auto, 1fr),
-        align: (horizon, center + horizon, horizon),
-        line(length: 100%, stroke: 0.5pt + luma(40%)),
-        pad(x: 8pt)[
-          #set text(font: font-display, size: 9pt, dir: rtl,
-                    tracking: 0.1em, fill: luma(25%))
-          מקור השפע
-        ],
-        line(length: 100%, stroke: 0.5pt + luma(40%)),
-      )
-      v(4pt)
-    },
-    clearance: 8mm,
-    gap: 4pt,
-    indent: 0pt,
-  )
-
   body
+
+  // --- Notes metadata dump (for validator consumption) -------------------
+  // Emits a single document-level metadata block, queryable via
+  // `typst query build/book.typ '<notes-meta>' --field value --one`.
+  context {
+    let all-notes = query(footnote)
+    let counters = (:)
+    let data = ()
+    for n in all-notes {
+      let st = _stream-of(n)
+      let ch = _chapter-of(n)
+      let key = st + "-" + str(ch)
+      let idx = counters.at(key, default: 0) + 1
+      counters.insert(key, idx)
+      let body-text = _note-body-text(n)
+      let codepoints = body-text.clusters()
+      let max = calc.min(25, codepoints.len())
+      data.push((
+        stream: st,
+        chapter: ch,
+        page: n.location().page(),
+        index_in_stream: idx,
+        marker: "[" + hebrew-numeral(idx) + "]",
+        body_first_25chars: codepoints.slice(0, max).join(""),
+      ))
+    }
+    [#metadata(data)<notes-meta>]
+  }
 }

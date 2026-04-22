@@ -174,6 +174,65 @@ Expected output line: `tag=fn body=...` and `tag=en body=...`. If the filter ret
 - [ ] Commit a font fallback for Noto Serif Hebrew so `warning: unknown font` stops.
 - [ ] Emit `build/notes.json` for validators — each note record: `{stream: "fn"|"en", chapter: N, page: N, index_within_chapter_stream: N, marker: "[א]", body_first_25: "..."}`.
 
+## Probe results (run 2026-04-22, Typst 0.14.2 b33de9de on sandbox)
+
+All three probes PASS — the design in this file is viable.
+
+### Probe 1 — `here().page()` in page footer → PASS ✅
+
+Source: `build/probe1.typ` (3-page doc, each page has one body+footnote, footer
+prints `footer-page: #here().page()`). pypdf text extraction showed:
+
+```
+page1: 'body1 1\n1ref on page 1\nfooter-page: 1'
+page2: 'body2 2\n2ref on page 2\nfooter-page: 2'
+page3: 'body3 3\n3ref on page 3\nfooter-page: 3'
+```
+
+Conclusion: `here().page()` inside `page(footer: context { … })` returns the
+RENDER page number, not the definition page. Confirms the whole design basis.
+
+### Probe 2 — RTL `grid(columns: (1fr, 1fr))` places column-1 on the right → PASS ✅
+
+Source: `build/probe2c.typ` — 200mm-wide page with
+`set text(dir: rtl)` and
+`grid(columns: (1fr, 1fr), align: (right, left), [AAAAAAAAAAAAAA], [B])`.
+PIL column-darkness scan of the rendered 945px-wide PNG:
+
+- Single tiny "B" glyph cluster at x=11–18 (left side of page).
+- Many "A" glyph clusters spread across x=767–931 (right side of page).
+
+Conclusion: under `dir: rtl`, grid cell 0 renders at the visual RIGHT and
+grid cell 1 at the visual LEFT. Mapping for M1: `columns: (1fr, 0.5em, 1fr)`
+with cells `(fn-column, gutter, en-column)` → fn on right, en on left.
+
+### Probe 3 — `metadata()` tagging survives `query(footnote)` → PASS ✅
+
+Source: `build/probe3.typ` — two pages, each with a footnote body beginning
+with `#metadata("fn")` or `#metadata("en")`. The footer queries all footnotes
+and prints `first-rep=#repr(n.body.children.first())`. Output:
+
+```
+pg=1 kids=3 first-rep=metadata(value: "fn")
+pg=2 kids=3 first-rep=metadata(value: "en")
+```
+
+Conclusion: the metadata element is the FIRST CHILD of the footnote body, and
+its `.value` field holds the tag string. The filter predicate for the footer
+is therefore:
+
+```typst
+#let _stream-of(n) = {
+  let c = n.body.children
+  if c.len() > 0 and c.first().func() == metadata {
+    c.first().value
+  } else { "fn" }   // fallback / defensive
+}
+```
+
+Children count was 3, not 1 (metadata + space + text) — confirming the body
+wraps tag + space + actual note text.
+
 ## Open questions (for workers — answer via probes or leave as known-limitations)
 
 - **Introspection convergence stability** — when the apparatus gets dense (many notes on a page with spillover), does Typst's multi-pass introspection converge deterministically? Test with a full-book build and `sha256sum` twice.

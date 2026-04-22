@@ -1,8 +1,6 @@
 # Build artifacts
-build/*.pdf
-build/*.png
-build/*.typ
-build/audit_report.md
+build/
+
 
 # Large source uploads kept locally, not committed (available at
 # github.com/Abe1018776/sefer-plan-files for regeneration)

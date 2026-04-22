@@ -143,10 +143,16 @@ def convert(
     template_path: str,
     shaar: str,
     start_folio: int,
-) -> "tuple[str, int, int]":
+) -> "tuple[str, int, int, str]":
     """Emit the full Typst source for the book.
 
-    Returns (source_text, total_fn_emitted, total_en_emitted).
+    Returns (source_text, total_fn_emitted, total_en_emitted, plain_text).
+
+    ``plain_text`` is a newline-separated dump of every textual element in
+    reading order — body paragraphs, subtitles, chapter labels, chapter
+    titles, ornament markers, and note bodies. It is written alongside
+    ``book.typ`` as ``build/book.plain.txt`` so validators can bypass
+    pypdf Hebrew-RTL extraction unreliability (see VAL-M1-002).
     """
     blocks = data["docx_content"]
 
@@ -157,6 +163,7 @@ def convert(
             start_folio=start_folio,
         )
     ]
+    plain: List[str] = []
 
     total_fn = 0
     total_en = 0
@@ -178,19 +185,24 @@ def convert(
             out.append(
                 f"#chapter([{escape_typst(label)}], [{escape_typst(txt)}])\n"
             )
+            plain.append(f"[CHAPTER] {label}")
+            plain.append(f"[CHAPTER_TITLE] {txt}")
             continue
 
         if pending_chapter is not None:
             # Chapter label without the expected vowelised title.
             out.append(f"#chapter([{escape_typst(pending_chapter)}], [])\n")
+            plain.append(f"[CHAPTER] {pending_chapter}")
             pending_chapter = None
 
         if kind == "subtitle":
             out.append(f"#subtitle([{escape_typst(txt)}])\n")
+            plain.append(f"[SUBTITLE] {txt}")
             continue
 
         if kind == "ornament":
             out.append("#ornament()\n")
+            plain.append("[ORNAMENT]")
             continue
 
         # body
@@ -200,11 +212,17 @@ def convert(
         out.append("#body[\n")
         out.append(rendered)
         out.append("\n]\n\n")
+        plain.append(f"[BODY] {block['text']}")
+        for f in (block.get("footnotes") or []):
+            plain.append(f"[FN {f.get('id')}] {f.get('text', '')}")
+        for e in (block.get("endnotes") or []):
+            plain.append(f"[EN {e.get('id')}] {e.get('text', '')}")
 
     if pending_chapter is not None:
         out.append(f'#chapter("{escape_typst(pending_chapter)}", "")\n')
+        plain.append(f"[CHAPTER] {pending_chapter}")
 
-    return "".join(out), total_fn, total_en
+    return "".join(out), total_fn, total_en, "\n".join(plain) + "\n"
 
 
 def main() -> None:
@@ -237,14 +255,17 @@ def main() -> None:
     import os
     rel_tpl_for_out = os.path.relpath(tpl, start=out.parent)
 
-    src, total_fn, total_en = convert(
+    src, total_fn, total_en, plain = convert(
         data,
         template_path=rel_tpl_for_out.replace("\\", "/"),
         shaar=args.shaar,
         start_folio=args.start_folio,
     )
     out.write_text(src, encoding="utf-8")
+    plain_path = out.parent / "book.plain.txt"
+    plain_path.write_text(plain, encoding="utf-8")
     print(f"wrote {out}  ({len(src)} chars)")
+    print(f"wrote {plain_path}  ({len(plain)} chars)")
     print(f"emitted {total_fn} fn + {total_en} en")
 
 
