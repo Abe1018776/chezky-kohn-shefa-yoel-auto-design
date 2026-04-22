@@ -1,0 +1,33 @@
+{
+  "featureId": "m1-audit-pagination-alignment",
+  "reviewedAt": "2026-04-22T22:53:30.910412Z",
+  "commitId": "d6ac399",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "pass",
+  "codeReview": {
+    "summary": "The feature implements solution (b) as required: `audit/alignment.json` is committed with 1..15 generated-page mappings, `audit/image_diff.py` reads alignment data with positional fallback when the file is absent/malformed, and the design note documents derivation and regeneration steps. Core audit scoring math for mapped pages remains unchanged.",
+    "issues": [
+      {
+        "file": "audit/image_diff.py",
+        "line": 197,
+        "severity": "non_blocking",
+        "description": "Alignment values are joined to `--reference` without basename/path validation (`out[idx] = ref_dir / str(v)`). A malformed mapping like `../build/page-1.png` would be accepted and could compare against non-reference files, weakening audit integrity. Restrict values to bare `page_###.png` names and reject path separators/`..`."
+      }
+    ]
+  },
+  "sharedStateObservations": [
+    {
+      "area": "skills",
+      "observation": "The feature's `skillName` is `notes-apparatus-worker`, but the transcript skeleton for session `d3867c61-4ebe-48c1-bc49-a1dee8e83e34` shows no Skill invocation and no mission-doc Read calls; this suggests procedure-compliance tracking can report success even when the skill workflow is skipped.",
+      "evidence": "worker-transcripts.jsonl entry for session d3867c61...: derived tool list starts with Execute-only calls and reports `has_skill=False`, `has_read=False`."
+    },
+    {
+      "area": "conventions",
+      "observation": "Mission AGENTS boundary text references an outdated Windows repo root (`E:\\...`) that does not match the active workspace path (`C:\\Users\\Main\\...`), which can cause confusion when enforcing off-limits rules.",
+      "evidence": "C:\\Users\\Main\\.factory\\missions\\0e4c58ac-d782-472e-a3fd-a6ae036604cf\\AGENTS.md:14 contains `Anything outside E:\\chezky-kohn-shefa-yoel-auto-design\\**`."
+    }
+  ],
+  "addressesFailureFrom": null,
+  "summary": "Review passed. The alignment-map implementation and fallback behavior satisfy the feature contract, with one non-blocking hardening issue (alignment path validation) and two shared-state observations recorded."
+}

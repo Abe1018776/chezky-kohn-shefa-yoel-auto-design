@@ -1,0 +1,33 @@
+{
+  "featureId": "m1-convert-py-notes-fix",
+  "reviewedAt": "2026-04-22T22:53:55.185478Z",
+  "commitId": "09f76f8",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "pass",
+  "codeReview": {
+    "summary": "Commit 09f76f8 replaces the broken inline-marker regex path with reference-driven note emission and preserves per-stream ref ordering for the mission input; no blocking correctness issues were found.",
+    "issues": [
+      {
+        "file": "python/convert.py",
+        "line": 113,
+        "severity": "non_blocking",
+        "description": "Missing note-id references are silently skipped (if body_text is None: continue) for both fn/en loops, so malformed ref↔body data would drop notes without diagnostics."
+      }
+    ]
+  },
+  "sharedStateObservations": [
+    {
+      "area": "skills",
+      "observation": "The skill requires reading architecture.md, typst-notes.md, and environment.md before implementation, but this worker transcript skeleton only shows reads of mission.md, validation-contract.md, AGENTS.md, services.yaml, convert.py, template.typ, features.json, and source JSON.",
+      "evidence": "Skill requirement: .factory/skills/notes-apparatus-worker/SKILL.md lines 16-25; transcript skeleton entry in mission worker-transcripts.jsonl for session 6f580599-9fde-469b-b709-e39508daf25e does not include those three library reads."
+    },
+    {
+      "area": "knowledge",
+      "observation": "Shared architecture docs still describe the pre-fix convert.py behavior (inline bracket marker scanning and fn-drop bug), which is now outdated after this feature commit.",
+      "evidence": ".factory/library/architecture.md lines 72-75 and 163-166 still document render_body as inline-callout based and explicitly call out silent fn dropping, while commit 09f76f8 replaces that logic."
+    }
+  ],
+  "addressesFailureFrom": null,
+  "summary": "Review passed: the feature implementation matches the stated M1 note-emission and ordering goals for current mission data, with one non-blocking robustness concern and two shared-state documentation/procedure observations."
+}

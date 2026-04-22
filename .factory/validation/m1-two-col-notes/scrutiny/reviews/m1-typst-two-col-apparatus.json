@@ -1,0 +1,39 @@
+{
+  "featureId": "m1-typst-two-col-apparatus",
+  "reviewedAt": "2026-04-22T22:54:48.173058Z",
+  "commitId": "b887ae9",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "fail",
+  "codeReview": {
+    "summary": "The commit correctly replaces the separator-based apparatus with a footer/query-driven two-stream layout and emits notes metadata, but it misses a contract-critical requirement: `build/book.plain.txt` is generated from converter input JSON instead of Typst-rendered output.",
+    "issues": [
+      {
+        "file": "python/convert.py",
+        "line": 215,
+        "severity": "blocking",
+        "description": "Feature expectations require `build/book.plain.txt` to be a Typst-side dump of rendered text, but this implementation builds the file directly from source JSON block payloads (`[BODY]`, `[FN]`, `[EN]`) and writes it before Typst introspection. This can report notes/text as present even if the template rendering drops or alters them, weakening VAL-M1-002 fallback validity."
+      },
+      {
+        "file": "typst/template.typ",
+        "line": 290,
+        "severity": "non_blocking",
+        "description": "On pages with no notes, `_apparatus()` emits a decorative bottom rule solely to keep an audit heuristic firing. This couples rendering to scorer behavior and is not part of the feature contract; it should be documented as an intentional temporary workaround if retained."
+      }
+    ]
+  },
+  "sharedStateObservations": [
+    {
+      "area": "skills",
+      "observation": "Procedure guidance and compliance signaling are misaligned for `book.plain.txt`: the skill says the fallback should be emitted by the Typst template, but this feature emits it from `convert.py` while handoff feedback still marks `followedProcedure: true`.",
+      "evidence": ".factory/skills/notes-apparatus-worker/SKILL.md:59 requires Typst-template emission; python/convert.py:215-219 and 265-266 generate/write `book.plain.txt` from JSON-side data; handoff file line 125 reports `followedProcedure: true`."
+    },
+    {
+      "area": "knowledge",
+      "observation": "Architecture shared-state remains stale about convert note emission behavior, which can mislead later workers reviewing known quirks.",
+      "evidence": ".factory/library/architecture.md:163 still states `convert.py` silently drops `#fn` calls as an open critical bug, but python/convert.py:83-97 now documents and implements ordered `#fn/#en` emission."
+    }
+  ],
+  "addressesFailureFrom": null,
+  "summary": "Review failed due one blocking requirement mismatch: `build/book.plain.txt` is converter-derived instead of Typst-derived. Apparatus and metadata work is otherwise substantial; one non-blocking audit-coupling concern and two shared-state observations were recorded."
+}

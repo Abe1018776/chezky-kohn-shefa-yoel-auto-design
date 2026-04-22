@@ -1,0 +1,69 @@
+{
+  "milestone": "m1-two-col-notes",
+  "round": 1,
+  "status": "fail",
+  "validatorsRun": {
+    "test": {
+      "passed": true,
+      "command": "services.yaml: commands.test (executed via ssh to sefer-design)",
+      "exitCode": 0
+    },
+    "typecheck": {
+      "passed": true,
+      "command": "services.yaml: commands.typecheck (true, executed via ssh to sefer-design)",
+      "exitCode": 0
+    },
+    "lint": {
+      "passed": true,
+      "command": "services.yaml: commands.lint (true, executed via ssh to sefer-design)",
+      "exitCode": 0
+    }
+  },
+  "reviewsSummary": {
+    "total": 3,
+    "passed": 2,
+    "failed": 1,
+    "failedFeatures": [
+      "m1-typst-two-col-apparatus"
+    ]
+  },
+  "blockingIssues": [
+    {
+      "featureId": "m1-typst-two-col-apparatus",
+      "severity": "blocking",
+      "description": "`build/book.plain.txt` is generated from JSON-side data in `python/convert.py` instead of Typst-rendered output, so VAL-M1-002 fallback evidence can mask template-side note drops/alterations."
+    }
+  ],
+  "appliedUpdates": [],
+  "suggestedGuidanceUpdates": [
+    {
+      "target": "AGENTS.md",
+      "suggestion": "Update mission-boundary Windows path examples from `E:\\chezky-kohn-shefa-yoel-auto-design\\**` to the active workspace root (`C:\\Users\\Main\\chezky-kohn-shefa-yoel-auto-design\\**`) to avoid enforcement ambiguity.",
+      "evidence": "Review m1-audit-pagination-alignment reported the mismatch between AGENTS.md boundary path and active workspace path.",
+      "isSystemic": false
+    },
+    {
+      "target": "skills",
+      "suggestion": "Strengthen skill-compliance guardrails so features with assigned skills must show skill invocation plus required prerequisite reads before implementation or validation is considered complete.",
+      "evidence": "Two review reports (m1-convert-py-notes-fix and m1-audit-pagination-alignment) flagged transcript skeletons that lacked required skill-driven steps, indicating recurring process drift.",
+      "isSystemic": true
+    },
+    {
+      "target": "library",
+      "suggestion": "Refresh `.factory/library/architecture.md` to match post-M1 shipped behavior (convert.py ordered fn/en emission and resolved silent-drop status).",
+      "evidence": "Both m1-convert-py-notes-fix and m1-typst-two-col-apparatus reviews flagged stale architecture sections describing pre-fix note-drop behavior.",
+      "isSystemic": true
+    }
+  ],
+  "rejectedObservations": [
+    {
+      "observation": "Duplicate architecture-staleness report from multiple reviews",
+      "reason": "duplicate"
+    },
+    {
+      "observation": "Decorative no-notes bottom rule to satisfy audit heuristic",
+      "reason": "ambiguous—rendering policy choice, not a shared-state artifact update candidate"
+    }
+  ],
+  "previousRound": null
+}
