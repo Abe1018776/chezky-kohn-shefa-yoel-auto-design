@@ -46,9 +46,22 @@ commands:
   build-notes-json: |
     cd ~/chezky-kohn-shefa-yoel-auto-design && ~/.local/bin/typst query --root . --font-path typst/fonts --format json --pretty build/book.typ '<notes-meta>' --field value --one > build/notes.json
 
-  # Full pipeline: clean → convert → PDF → PNG → notes.json
+  # Extract the Typst-rendered plain-text witness into build/book.plain.txt.
+  # Each public API function in typst/template.typ emits a <plain-line>
+  # metadata element in logical reading order (chapter label/title,
+  # subtitle, body, inline fn/en note bodies, ornament markers). The
+  # concatenated list — one line per element — is the authoritative
+  # fallback text source for VAL-M1-002 / VAL-CROSS-008 assertions when
+  # pypdf's Hebrew-RTL extraction is unreliable. Emission is Typst-side
+  # (not JSON-side) so the witness always matches what the template
+  # actually renders; see scrutiny synthesis at
+  # .factory/validation/m1-two-col-notes/scrutiny/synthesis.json.
+  build-plain-text: |
+    cd ~/chezky-kohn-shefa-yoel-auto-design && ~/.local/bin/typst query --root . --font-path typst/fonts --format json build/book.typ '<plain-line>' --field value | python3 -c 'import json,sys; sys.stdout.write("\n".join(json.load(sys.stdin)) + "\n")' > build/book.plain.txt
+
+  # Full pipeline: clean → convert → PDF → PNG → notes.json → book.plain.txt
   build: |
-    cd ~/chezky-kohn-shefa-yoel-auto-design && rm -rf build && mkdir build && python3 python/convert.py && SOURCE_DATE_EPOCH=1704067200 ~/.local/bin/typst compile --root . --font-path typst/fonts build/book.typ build/book.pdf && SOURCE_DATE_EPOCH=1704067200 ~/.local/bin/typst compile --root . --font-path typst/fonts build/book.typ 'build/page-{n}.png' --ppi 120 --format png && ~/.local/bin/typst query --root . --font-path typst/fonts --format json --pretty build/book.typ '<notes-meta>' --field value --one > build/notes.json
+    cd ~/chezky-kohn-shefa-yoel-auto-design && rm -rf build && mkdir build && python3 python/convert.py && SOURCE_DATE_EPOCH=1704067200 ~/.local/bin/typst compile --root . --font-path typst/fonts build/book.typ build/book.pdf && SOURCE_DATE_EPOCH=1704067200 ~/.local/bin/typst compile --root . --font-path typst/fonts build/book.typ 'build/page-{n}.png' --ppi 120 --format png && ~/.local/bin/typst query --root . --font-path typst/fonts --format json --pretty build/book.typ '<notes-meta>' --field value --one > build/notes.json && ~/.local/bin/typst query --root . --font-path typst/fonts --format json build/book.typ '<plain-line>' --field value | python3 -c 'import json,sys; sys.stdout.write("\n".join(json.load(sys.stdin)) + "\n")' > build/book.plain.txt
 
   # Run the image_diff audit against reference_scans/
   audit: |
@@ -56,7 +69,7 @@ commands:
 
   # Full build + audit — the canonical "test" command for the project
   test: |
-    cd ~/chezky-kohn-shefa-yoel-auto-design && rm -rf build && mkdir build && python3 python/convert.py && SOURCE_DATE_EPOCH=1704067200 ~/.local/bin/typst compile --root . --font-path typst/fonts build/book.typ build/book.pdf && SOURCE_DATE_EPOCH=1704067200 ~/.local/bin/typst compile --root . --font-path typst/fonts build/book.typ 'build/page-{n}.png' --ppi 120 --format png && ~/.local/bin/typst query --root . --font-path typst/fonts --format json --pretty build/book.typ '<notes-meta>' --field value --one > build/notes.json && python3 audit/image_diff.py
+    cd ~/chezky-kohn-shefa-yoel-auto-design && rm -rf build && mkdir build && python3 python/convert.py && SOURCE_DATE_EPOCH=1704067200 ~/.local/bin/typst compile --root . --font-path typst/fonts build/book.typ build/book.pdf && SOURCE_DATE_EPOCH=1704067200 ~/.local/bin/typst compile --root . --font-path typst/fonts build/book.typ 'build/page-{n}.png' --ppi 120 --format png && ~/.local/bin/typst query --root . --font-path typst/fonts --format json --pretty build/book.typ '<notes-meta>' --field value --one > build/notes.json && ~/.local/bin/typst query --root . --font-path typst/fonts --format json build/book.typ '<plain-line>' --field value | python3 -c 'import json,sys; sys.stdout.write("\n".join(json.load(sys.stdin)) + "\n")' > build/book.plain.txt && python3 audit/image_diff.py
 
   # Determinism check: build twice and compare sha256. Uses fixed
   # SOURCE_DATE_EPOCH so the PDF /ID trailer stays identical across runs.

@@ -18,6 +18,7 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import sys
 import unicodedata
 from pathlib import Path
 from typing import Dict, List
@@ -80,7 +81,7 @@ def escape_typst(s: str) -> str:
 # Body rendering: emit #fn[] / #en[] calls in JSON footnote_refs / endnote_refs
 # order and append them to the block's paragraph text.
 # ---------------------------------------------------------------------------
-def render_body(block: dict) -> "tuple[str, int, int]":
+def render_body(block: dict) -> "tuple[str, int, int, int]":
     """Convert a body block's text into Typst source with trailing
     #fn[...] and #en[...] calls.
 
@@ -96,9 +97,15 @@ def render_body(block: dict) -> "tuple[str, int, int]":
     corresponding ref element. This preserves the ordering invariant
     required by VAL-M1-013 (k-th marker ↔ k-th ref).
 
-    Returns (rendered_source, fn_emitted_count, en_emitted_count).
+    If a ref id has no matching entry in footnotes[]/endnotes[], we
+    print a WARN line to stderr and skip it — surfacing future corpus
+    drift instead of silently dropping notes. The skipped count is
+    returned so the CLI can include it in the summary line.
+
+    Returns (rendered_source, fn_emitted_count, en_emitted_count, refs_skipped).
     """
     text = block["text"]
+    idx = block.get("index", "?")
     fn_by_id = {str(f["id"]): f["text"] for f in (block.get("footnotes") or [])}
     en_by_id = {str(e["id"]): e["text"] for e in (block.get("endnotes") or [])}
     fn_refs = [str(r) for r in (block.get("footnote_refs") or [])]
@@ -107,10 +114,16 @@ def render_body(block: dict) -> "tuple[str, int, int]":
     out_parts: List[str] = [escape_typst(text)]
     fn_emitted = 0
     en_emitted = 0
+    refs_skipped = 0
 
     for ref_id in fn_refs:
         body_text = fn_by_id.get(ref_id)
         if body_text is None:
+            print(
+                f"convert: WARN: block {idx}: missing fn ref id={ref_id}",
+                file=sys.stderr,
+            )
+            refs_skipped += 1
             continue
         esc = escape_typst(body_text).replace("\n", " ")
         out_parts.append(f"#fn[{esc}]")
@@ -119,12 +132,17 @@ def render_body(block: dict) -> "tuple[str, int, int]":
     for ref_id in en_refs:
         body_text = en_by_id.get(ref_id)
         if body_text is None:
+            print(
+                f"convert: WARN: block {idx}: missing en ref id={ref_id}",
+                file=sys.stderr,
+            )
+            refs_skipped += 1
             continue
         esc = escape_typst(body_text).replace("\n", " ")
         out_parts.append(f"#en[{esc}]")
         en_emitted += 1
 
-    return "".join(out_parts), fn_emitted, en_emitted
+    return "".join(out_parts), fn_emitted, en_emitted, refs_skipped
 
 
 # ---------------------------------------------------------------------------
@@ -143,16 +161,16 @@ def convert(
     template_path: str,
     shaar: str,
     start_folio: int,
-) -> "tuple[str, int, int, str]":
+) -> "tuple[str, int, int, int]":
     """Emit the full Typst source for the book.
 
-    Returns (source_text, total_fn_emitted, total_en_emitted, plain_text).
+    Returns (source_text, total_fn_emitted, total_en_emitted, refs_skipped).
 
-    ``plain_text`` is a newline-separated dump of every textual element in
-    reading order — body paragraphs, subtitles, chapter labels, chapter
-    titles, ornament markers, and note bodies. It is written alongside
-    ``book.typ`` as ``build/book.plain.txt`` so validators can bypass
-    pypdf Hebrew-RTL extraction unreliability (see VAL-M1-002).
+    The plain-text fallback (``build/book.plain.txt``) is NOT emitted from
+    this converter. It is produced Typst-side via ``<plain-line>`` metadata
+    tags in ``typst/template.typ`` so the witness reflects what the
+    template *actually* renders rather than what the JSON source
+    prescribes. See services.yaml::commands.build-plain-text.
     """
     blocks = data["docx_content"]
 
@@ -163,10 +181,10 @@ def convert(
             start_folio=start_folio,
         )
     ]
-    plain: List[str] = []
 
     total_fn = 0
     total_en = 0
+    total_skipped = 0
 
     # Buffer chapter opener (label + title together).
     pending_chapter: str | None = None
@@ -185,44 +203,34 @@ def convert(
             out.append(
                 f"#chapter([{escape_typst(label)}], [{escape_typst(txt)}])\n"
             )
-            plain.append(f"[CHAPTER] {label}")
-            plain.append(f"[CHAPTER_TITLE] {txt}")
             continue
 
         if pending_chapter is not None:
             # Chapter label without the expected vowelised title.
             out.append(f"#chapter([{escape_typst(pending_chapter)}], [])\n")
-            plain.append(f"[CHAPTER] {pending_chapter}")
             pending_chapter = None
 
         if kind == "subtitle":
             out.append(f"#subtitle([{escape_typst(txt)}])\n")
-            plain.append(f"[SUBTITLE] {txt}")
             continue
 
         if kind == "ornament":
             out.append("#ornament()\n")
-            plain.append("[ORNAMENT]")
             continue
 
         # body
-        rendered, fn_n, en_n = render_body(block)
+        rendered, fn_n, en_n, skipped = render_body(block)
         total_fn += fn_n
         total_en += en_n
+        total_skipped += skipped
         out.append("#body[\n")
         out.append(rendered)
         out.append("\n]\n\n")
-        plain.append(f"[BODY] {block['text']}")
-        for f in (block.get("footnotes") or []):
-            plain.append(f"[FN {f.get('id')}] {f.get('text', '')}")
-        for e in (block.get("endnotes") or []):
-            plain.append(f"[EN {e.get('id')}] {e.get('text', '')}")
 
     if pending_chapter is not None:
-        out.append(f'#chapter("{escape_typst(pending_chapter)}", "")\n')
-        plain.append(f"[CHAPTER] {pending_chapter}")
+        out.append(f'#chapter([{escape_typst(pending_chapter)}], [])\n')
 
-    return "".join(out), total_fn, total_en, "\n".join(plain) + "\n"
+    return "".join(out), total_fn, total_en, total_skipped
 
 
 def main() -> None:
@@ -255,18 +263,18 @@ def main() -> None:
     import os
     rel_tpl_for_out = os.path.relpath(tpl, start=out.parent)
 
-    src, total_fn, total_en, plain = convert(
+    src, total_fn, total_en, total_skipped = convert(
         data,
         template_path=rel_tpl_for_out.replace("\\", "/"),
         shaar=args.shaar,
         start_folio=args.start_folio,
     )
     out.write_text(src, encoding="utf-8")
-    plain_path = out.parent / "book.plain.txt"
-    plain_path.write_text(plain, encoding="utf-8")
     print(f"wrote {out}  ({len(src)} chars)")
-    print(f"wrote {plain_path}  ({len(plain)} chars)")
-    print(f"emitted {total_fn} fn + {total_en} en")
+    print(
+        f"emitted {total_fn} fn + {total_en} en "
+        f"({total_skipped} refs skipped)"
+    )
 
 
 if __name__ == "__main__":

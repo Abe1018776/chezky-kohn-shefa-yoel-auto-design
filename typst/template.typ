@@ -119,8 +119,65 @@
   ]
 }
 
+// ------------------------------ Plain-text logical dump --------------------
+// Each public API function below emits a `<plain-line>` metadata tag
+// capturing the text that block contributes, in logical reading order. At
+// build time, `typst query '<plain-line>' --field value` returns the list
+// of all tags in document order; concatenated with newlines, this becomes
+// `build/book.plain.txt` — the authoritative plain-text witness for what
+// the PDF actually rendered (see VAL-M1-002 / VAL-CROSS-008).
+//
+// Because #fn / #en emit their own <plain-line> tags inline within body
+// content, the emission order matches the reading order: body text first,
+// then its footnote bodies, then its endnote bodies.
+
+// Extract rendered plain text from an arbitrary content value. Mirrors
+// _note-body-text further down but operates on raw content passed to the
+// public template API (chapter label/title, subtitle, body). Skips
+// `footnote` and `metadata` children so that inline #fn[...] / #en[...]
+// call-outs do not duplicate their note bodies into the body line —
+// those notes emit their own <plain-line> entries via fn/en below.
+#let _content-text(node) = {
+  if type(node) == str { return node }
+  let walk(n) = {
+    if type(n) == str { return n }
+    let f = n.func()
+    let fname = repr(f)
+    // Skip elements whose bodies are already tracked separately (footnotes
+    // emit their own <plain-line> via fn/en wrappers) or carry no reader-
+    // visible text at all (raw metadata tags).
+    if f == footnote or f == metadata { return "" }
+    // Space, linebreak, parbreak, and smartquote are separate content
+    // elements — not text leaves — so they won't surface via the "text"
+    // field walk below. Match them by their repr name (they are not
+    // exported as top-level identifiers in Typst 0.14) so the extracted
+    // plain-line preserves word boundaries and quotation marks.
+    if fname == "space" { return " " }
+    if fname == "linebreak" { return " " }
+    if fname == "parbreak" { return " " }
+    if fname == "smartquote" {
+      let fields = n.fields()
+      if fields.at("double", default: true) { return "\"" } else { return "'" }
+    }
+    let fields = n.fields()
+    if "text" in fields { return n.text }
+    if "children" in fields {
+      let s = ""
+      for c in n.children { s = s + walk(c) }
+      return s
+    }
+    if "body" in fields { return walk(n.body) }
+    return ""
+  }
+  walk(node)
+}
+
+#let _emit-plain(line) = [#metadata(line)<plain-line>]
+
 // ------------------------------ Chapter entry ------------------------------
 #let chapter(label, title) = {
+  _emit-plain("[CHAPTER] " + _content-text(label))
+  _emit-plain("[CHAPTER_TITLE] " + _content-text(title))
   pagebreak(weak: true)
   _chapter-state.update(label)
   _chapter-num-state.update(c => c + 1)
@@ -135,6 +192,7 @@
 
 // ------------------------------ Subtitle -----------------------------------
 #let subtitle(s) = {
+  _emit-plain("[SUBTITLE] " + _content-text(s))
   v(2mm)
   align(right)[
     #set text(font: font-body, size: 10.5pt, dir: rtl, lang: "he",
@@ -151,16 +209,27 @@
 // .factory/library/typst-notes.md).
 //
 // Chapter number comes from _chapter-num-state and is resolved at call time
-// via a context wrapper.
-#let fn(body) = context {
-  footnote([#metadata(("fn", _chapter-num-state.get())) #body])
+// via a context wrapper. A <plain-line> tag is also emitted at the call
+// site (i.e. in the body paragraph), carrying the note's plain text so the
+// Typst-side logical-order dump stays in sync with rendered content.
+#let fn(body) = {
+  _emit-plain("[FN] " + _content-text(body))
+  context {
+    footnote([#metadata(("fn", _chapter-num-state.get())) #body])
+  }
 }
-#let en(body) = context {
-  footnote([#metadata(("en", _chapter-num-state.get())) #body])
+#let en(body) = {
+  _emit-plain("[EN] " + _content-text(body))
+  context {
+    footnote([#metadata(("en", _chapter-num-state.get())) #body])
+  }
 }
 
 // ------------------------------ Body wrapper -------------------------------
 #let body(content) = {
+  // Emit the body-line BEFORE rendering so it appears before any nested
+  // [FN]/[EN] plain-lines (which are emitted inline within content).
+  _emit-plain("[BODY] " + _content-text(content))
   set par(justify: true, leading: 1.15em, first-line-indent: 0em)
   set text(font: font-body, size: 16pt, dir: rtl, lang: "he")
   content
@@ -168,6 +237,7 @@
 
 // ------------------------------ Ornament (chapter end) ---------------------
 #let ornament() = {
+  _emit-plain("[ORNAMENT]")
   v(1fr)
   align(center)[
     #text(size: 22pt, fill: luma(30%))[#sym.dash.em#h(2pt)#sym.infinity#h(2pt)#sym.dash.em]
