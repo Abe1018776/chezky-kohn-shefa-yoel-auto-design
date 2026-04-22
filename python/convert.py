@@ -70,11 +70,6 @@ _TYPST_SPECIALS = {
     "]":  r"\]",
 }
 
-# A call-out in the body text looks like `[א]` (Hebrew letter in brackets).
-# We pull those out BEFORE escaping, so we can replace them with `#fn[...]` /
-# `#en[...]` calls in the correct order.
-CALLOUT_RE = re.compile(r"\[([\u05D0-\u05EA]{1,3})\]")
-
 
 def escape_typst(s: str) -> str:
     # Preserve Hebrew and niqqud as-is; escape only Typst syntax chars.
@@ -82,71 +77,54 @@ def escape_typst(s: str) -> str:
 
 
 # ---------------------------------------------------------------------------
-# Body rendering: inline call-outs -> #fn[] / #en[] in source order
+# Body rendering: emit #fn[] / #en[] calls in JSON footnote_refs / endnote_refs
+# order and append them to the block's paragraph text.
 # ---------------------------------------------------------------------------
-def render_body(block: dict) -> str:
-    """Convert a body block's text into Typst source with #fn[]/#en[] calls.
+def render_body(block: dict) -> "tuple[str, int, int]":
+    """Convert a body block's text into Typst source with trailing
+    #fn[...] and #en[...] calls.
 
-    Footnote / endnote call-outs in the JSON body text are bracketed Hebrew
-    letters like `[א]`. The pagination-study spec (§1.1) says to pair them
-    with `footnotes[i]` / `endnotes[i]` **positionally**, not by numeric id.
-    Here we walk the body left-to-right and pop from each queue in turn.
+    The source JSON (DOCX-extracted) does NOT carry inline bracket markers
+    like `[א]` in body text — verified empirically on
+    source_uploads/docx_content_with_notes.json. Therefore we cannot
+    re-anchor call-outs by regex position as previous pipelines attempted
+    (which silently dropped all 24 footnotes and all 10 endnotes).
+
+    Strategy: append one #fn[body] call per entry in footnote_refs, in
+    list order, followed by one #en[body] call per entry in endnote_refs,
+    in list order. Each call wraps the note body whose `id` equals the
+    corresponding ref element. This preserves the ordering invariant
+    required by VAL-M1-013 (k-th marker ↔ k-th ref).
+
+    Returns (rendered_source, fn_emitted_count, en_emitted_count).
     """
     text = block["text"]
-    fn_queue: List[dict] = list(block.get("footnotes") or [])
-    en_queue: List[dict] = list(block.get("endnotes") or [])
-    fn_ref_ids = list(block.get("footnote_refs") or [])
-    en_ref_ids = list(block.get("endnote_refs") or [])
+    fn_by_id = {str(f["id"]): f["text"] for f in (block.get("footnotes") or [])}
+    en_by_id = {str(e["id"]): e["text"] for e in (block.get("endnotes") or [])}
+    fn_refs = [str(r) for r in (block.get("footnote_refs") or [])]
+    en_refs = [str(r) for r in (block.get("endnote_refs") or [])]
 
-    # Map id -> body text (fast lookup), for cases where the id ordering in
-    # footnote_refs doesn't match the positional queue (rare but possible).
-    fn_by_id = {str(f["id"]): f["text"] for f in fn_queue}
-    en_by_id = {str(e["id"]): e["text"] for e in en_queue}
+    out_parts: List[str] = [escape_typst(text)]
+    fn_emitted = 0
+    en_emitted = 0
 
-    # Build a merged list of (start, end, kind, note_body) call-outs.
-    # Strategy: find every [Hebrew-letter] token. Each token consumes the next
-    # available note from fn_queue (the footnote apparatus is more common and
-    # always appears before endnotes in JSON order). If fn_queue is empty but
-    # en_queue isn't, it's an endnote call-out.
-    calls: List[tuple] = []
-    fn_used = 0
-    en_used = 0
-    for m in CALLOUT_RE.finditer(text):
-        if fn_used < len(fn_queue):
-            note = fn_queue[fn_used]["text"]
-            calls.append((m.start(), m.end(), "fn", note))
-            fn_used += 1
-        elif en_used < len(en_queue):
-            note = en_queue[en_used]["text"]
-            calls.append((m.start(), m.end(), "en", note))
-            en_used += 1
-        else:
-            calls.append((m.start(), m.end(), "fn", ""))  # orphan marker
+    for ref_id in fn_refs:
+        body_text = fn_by_id.get(ref_id)
+        if body_text is None:
+            continue
+        esc = escape_typst(body_text).replace("\n", " ")
+        out_parts.append(f"#fn[{esc}]")
+        fn_emitted += 1
 
-    # If there are residual endnotes without an inline bracket, append them
-    # at paragraph end so they still pin to this page.
-    trailing_en: List[str] = []
-    if en_used < len(en_queue):
-        for e in en_queue[en_used:]:
-            trailing_en.append(e["text"])
-
-    # Stitch the Typst source.
-    out_parts: List[str] = []
-    cursor = 0
-    for (start, end, kind, note) in calls:
-        out_parts.append(escape_typst(text[cursor:start]))
-        esc = escape_typst(note).replace("\n", " ")
-        if kind == "fn":
-            out_parts.append(f"#fn[{esc}]")
-        else:
-            out_parts.append(f"#en[{esc}]")
-        cursor = end
-    out_parts.append(escape_typst(text[cursor:]))
-    for note in trailing_en:
-        esc = escape_typst(note).replace("\n", " ")
+    for ref_id in en_refs:
+        body_text = en_by_id.get(ref_id)
+        if body_text is None:
+            continue
+        esc = escape_typst(body_text).replace("\n", " ")
         out_parts.append(f"#en[{esc}]")
+        en_emitted += 1
 
-    return "".join(out_parts)
+    return "".join(out_parts), fn_emitted, en_emitted
 
 
 # ---------------------------------------------------------------------------
@@ -165,7 +143,11 @@ def convert(
     template_path: str,
     shaar: str,
     start_folio: int,
-) -> str:
+) -> "tuple[str, int, int]":
+    """Emit the full Typst source for the book.
+
+    Returns (source_text, total_fn_emitted, total_en_emitted).
+    """
     blocks = data["docx_content"]
 
     out: List[str] = [
@@ -175,6 +157,9 @@ def convert(
             start_folio=start_folio,
         )
     ]
+
+    total_fn = 0
+    total_en = 0
 
     # Buffer chapter opener (label + title together).
     pending_chapter: str | None = None
@@ -209,7 +194,9 @@ def convert(
             continue
 
         # body
-        rendered = render_body(block)
+        rendered, fn_n, en_n = render_body(block)
+        total_fn += fn_n
+        total_en += en_n
         out.append("#body[\n")
         out.append(rendered)
         out.append("\n]\n\n")
@@ -217,7 +204,7 @@ def convert(
     if pending_chapter is not None:
         out.append(f'#chapter("{escape_typst(pending_chapter)}", "")\n')
 
-    return "".join(out)
+    return "".join(out), total_fn, total_en
 
 
 def main() -> None:
@@ -250,7 +237,7 @@ def main() -> None:
     import os
     rel_tpl_for_out = os.path.relpath(tpl, start=out.parent)
 
-    src = convert(
+    src, total_fn, total_en = convert(
         data,
         template_path=rel_tpl_for_out.replace("\\", "/"),
         shaar=args.shaar,
@@ -258,6 +245,7 @@ def main() -> None:
     )
     out.write_text(src, encoding="utf-8")
     print(f"wrote {out}  ({len(src)} chars)")
+    print(f"emitted {total_fn} fn + {total_en} en")
 
 
 if __name__ == "__main__":
