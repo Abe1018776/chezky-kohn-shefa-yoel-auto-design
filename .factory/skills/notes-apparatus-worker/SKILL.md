@@ -65,6 +65,15 @@ At the end of the feature's work, update `validation-state.json` baselines.
 `C:\Users\Main\.factory\missions\<mission-id>\validation-state.json`, NOT in
 the repo's `.factory/` folder. Use atomic read → mutate → write.
 
+Baselines represent the **PDF build output** (page count, audit score, build
+time), not audit instrumentation. If your feature changes only `audit/` files
+without touching `python/convert.py` or `typst/template.typ`, the PDF is
+unchanged and you do NOT need to update `baselines.m1.*` — the M1 green-gate
+baseline stays as the milestone's first green PDF build. Audit-script
+improvements that increase the scored number WITHOUT changing the PDF should
+be surfaced in the handoff's `whatWasImplemented`, not written into
+`baselines`.
+
 - For `m1-typst-two-col-apparatus` (M1 green-gate): write to `baselines.m1`:
   - `pdf_page_count` (integer, from pypdf)
   - `audit_score` (float, from `build/audit_report.md`)
