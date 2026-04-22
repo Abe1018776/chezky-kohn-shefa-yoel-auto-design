@@ -1,0 +1,28 @@
+# Build artifacts
+build/*.pdf
+build/*.png
+build/*.typ
+build/audit_report.md
+
+# Large source uploads kept locally, not committed (available at
+# github.com/Abe1018776/sefer-plan-files for regeneration)
+source_uploads/*.pdf
+source_uploads/*.docx
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# Node (for audit/paged)
+audit/paged/node_modules/
+audit/paged/package-lock.json
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Typst cache
+.typst-cache/

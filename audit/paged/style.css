@@ -1,0 +1,85 @@
+/* Paged.js stylesheet — 170×240mm, RTL Hebrew, 8-zone layout. */
+
+@page {
+  size: 170mm 240mm;
+  margin: 20mm 20mm 25mm 25mm;
+  @top-right { content: string(folio-letter); }
+  @top-center { content: "שפע " string(chapter-label) " שלמה"; font-weight: bold; }
+}
+
+html { direction: rtl; }
+
+body { font-family: "Noto Serif Hebrew", serif; font-size: 12.5pt; direction: rtl; }
+
+/* Chapter cartouche */
+.chapter-opener { break-before: page; text-align: center; margin-top: 18mm; }
+.cartouche {
+  display: inline-block;
+  padding: 10pt 24pt;
+  border: 1pt solid #000;
+  border-radius: 28pt;
+  font-size: 22pt; font-weight: bold;
+}
+.chapter-title {
+  font-size: 20pt; font-weight: bold; margin-top: 6mm;
+  letter-spacing: 0.03em;
+}
+
+/* Subtitle */
+.subtitle {
+  font-size: 10.5pt;
+  color: #555;
+  letter-spacing: 0.08em;
+  margin: 4mm 0 2mm 0;
+  text-align: right;
+  font-weight: normal;
+}
+
+/* Body */
+.body { text-align: justify; line-height: 1.6; margin: 2mm 0; }
+
+/* Inline footnote call-outs */
+.fn-call {
+  vertical-align: super;
+  font-size: 0.72em;
+  font-weight: bold;
+}
+
+/* Footnotes — floated to the page-bottom using GCPM */
+aside.fn {
+  float: footnote;
+  font-size: 8.8pt;
+  line-height: 1.25;
+}
+aside.fn::footnote-call { content: counter(footnote, hebrew); }
+aside.fn::footnote-marker { content: "[" counter(footnote, hebrew) "] "; }
+
+/* 2-column footnote block
+   This requires Paged.js's `column-count` extension; Paged.js inherits the
+   browser behavior. Pagejs chunker should wrap the per-page footnote block
+   in a .fn-apparatus element; here's the rule that gets applied: */
+@page { @footnote {
+  column-count: 2;
+  column-gap: 24pt;
+  direction: rtl;
+  border-top: none;
+  padding-top: 4mm;
+}}
+
+/* Rule headers above the columns */
+.fn-apparatus::before {
+  content: "─── מקור השפע ───";
+  display: block;
+  text-align: center;
+  color: #444;
+  letter-spacing: 0.1em;
+  font-size: 9pt;
+  margin-bottom: 3mm;
+}
+
+/* Hebrew counter style */
+@counter-style hebrew {
+  system: additive;
+  additive-symbols: 400 ת, 300 ש, 200 ר, 100 ק, 90 צ, 80 פ, 70 ע, 60 ס, 50 נ, 40 מ, 30 ל, 20 כ, 16 טז, 15 טו, 10 י, 9 ט, 8 ח, 7 ז, 6 ו, 5 ה, 4 ד, 3 ג, 2 ב, 1 א;
+  range: 1 499;
+}
