@@ -21,7 +21,7 @@ Environment variables, external dependencies, and setup notes.
 
 ## Windows host (orchestrator)
 
-- Path: `C:\Users\Main\chezky-kohn-shefa-yoel-auto-design\`
+- Path: `E:\chezky-kohn-shefa-yoel-auto-design\`
 - SSH client: OpenSSH (via Git for Windows / built-in). Workers invoke `ssh.exe` directly with a ProxyCommand pointing at the Factory Droid CLI for authentication.
 - No Typst, no audit tools locally — all heavy work happens on the sandbox.
 

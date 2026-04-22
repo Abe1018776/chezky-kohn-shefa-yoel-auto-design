@@ -37,7 +37,7 @@ eval $SSH "python3 -c 'from PIL import Image' 2>/dev/null || pip install --user 
 eval $SSH "python3 -c 'from PIL import Image; print(\"PIL ok\")'"
 
 echo "[init] Checking repo state on sandbox matches local..."
-LOCAL_HEAD=$(git -C C:/Users/Main/chezky-kohn-shefa-yoel-auto-design rev-parse HEAD 2>/dev/null || echo "unknown")
+LOCAL_HEAD=$(git -C E:/chezky-kohn-shefa-yoel-auto-design rev-parse HEAD 2>/dev/null || echo "unknown")
 REMOTE_HEAD=$(eval $SSH "cd ${REMOTE_REPO} && git rev-parse HEAD" 2>/dev/null || echo "unknown")
 echo "[init] local HEAD:  ${LOCAL_HEAD}"
 echo "[init] remote HEAD: ${REMOTE_HEAD}"
@@ -46,7 +46,7 @@ if [ "${LOCAL_HEAD}" != "${REMOTE_HEAD}" ]; then
 fi
 
 echo "[init] Verifying .gitignore covers build/ artefacts..."
-if ! grep -qE '^build/' C:/Users/Main/chezky-kohn-shefa-yoel-auto-design/.gitignore 2>/dev/null; then
+if ! grep -qE '^build/' E:/chezky-kohn-shefa-yoel-auto-design/.gitignore 2>/dev/null; then
   echo "[init] WARN: .gitignore does not exclude build/ — VAL-CROSS-005 may fail."
 fi
 
