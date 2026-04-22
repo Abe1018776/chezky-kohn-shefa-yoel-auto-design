@@ -137,6 +137,28 @@ Commit it. Validators will call it to verify VAL-M3-003 / VAL-M3-004.
 }
 ```
 
+## Heads-up from M1 (notes-apparatus worker handoff b887ae9)
+
+On chapter-opener / note-less pages (e.g. pages 7 and 12 in the M1 build),
+`_apparatus()` in `template.typ` currently draws a **thin decorative rule** in
+the bottom-margin notes zone to keep the notes-zone band visually continuous
+and keep the audit's `notes_header_found` heuristic firing consistently.
+
+Three of those note-less pages are actually **end-of-chapter pages** (the
+pages where JSON blocks 25, 38, 51 land) — exactly where your ornament goes.
+The ornament and the decorative rule may both want the same visual territory.
+
+**Your options:**
+- Leave the decorative rule alone and place the ornament above the bottom
+  margin (normal case — `v(1fr)` + `align(center, image(...))` in `ornament()`
+  typically pushes it above the notes zone, so no conflict).
+- If the rule visually competes with the ornament, conditionally suppress the
+  rule on ornament pages via a state flag (`state("on-ornament-page", false)`)
+  set by the `ornament()` function and read by `_apparatus()` during its
+  footer context pass.
+
+Decide empirically after rendering the ornament pages.
+
 ## When to Return to Orchestrator
 
 - **SVG design too subjective** — if you're uncertain the glyph visually matches the reference to stakeholder satisfaction, commit a good-faith approximation and flag in your handoff for orchestrator review + user input.

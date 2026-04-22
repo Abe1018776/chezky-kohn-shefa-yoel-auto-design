@@ -40,7 +40,10 @@ If your feature is `m1-typst-two-col-apparatus`, run the 3 empirical probes from
 - RTL `grid(columns: (1fr, 1fr))` places column-1 on the right.
 - `metadata()` tagging of footnote bodies survives `query()`.
 
-APPEND the probe results to `.factory/library/typst-notes.md` under a new "Probe results" section. Commit this with the feature.
+Probe `.typ` files should live under `build/` (which is gitignored) so they
+don't pollute the commit. APPEND the probe RESULTS (not the probe source) to
+`.factory/library/typst-notes.md` under a new "Probe results" section. Commit
+the `typst-notes.md` change with the feature.
 
 ### 3. Implement
 
@@ -57,7 +60,10 @@ For `typst/template.typ` changes: compile incrementally. Run `typst compile --ro
 
 ### 5. Record baselines
 
-At the end of the feature's work, update `validation-state.json` baselines:
+At the end of the feature's work, update `validation-state.json` baselines.
+**Important:** `validation-state.json` lives in the MISSION directory at
+`C:\Users\Main\.factory\missions\<mission-id>\validation-state.json`, NOT in
+the repo's `.factory/` folder. Use atomic read → mutate → write.
 
 - For `m1-typst-two-col-apparatus` (M1 green-gate): write to `baselines.m1`:
   - `pdf_page_count` (integer, from pypdf)

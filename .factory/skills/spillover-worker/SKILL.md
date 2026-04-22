@@ -74,7 +74,7 @@ In `typst/template.typ`:
 - Cross-verification per spillover page: for each page with a `#spillover` emission, confirm the col+spillover ids union equals the body-referenced ids set (VAL-M2-009).
 - Block 4 en #1 and Block 16 en #3 render full on single pages each (VAL-M2-011 + VAL-M2-004).
 - Score ≥ 55.0.
-- Update `validation-state.json::baselines.m2` = {pdf_page_count, audit_score, build_time_sec}.
+- Update `validation-state.json::baselines.m2` = {pdf_page_count, audit_score, build_time_sec}. The file lives in your mission directory at `C:\Users\Main\.factory\missions\<mission-id>\validation-state.json`, NOT in the repo's `.factory/`. Use atomic read → mutate → write.
 
 ### 6. Self-verify every VAL-M2-* assertion
 
