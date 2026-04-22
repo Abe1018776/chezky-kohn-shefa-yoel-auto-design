@@ -1,0 +1,18 @@
+{
+  "mission_id": "m2-full-width-spillover",
+  "status": "blocked_on_m1",
+  "created": "2026-04-22",
+  "prerequisites": ["m1-two-col-notes"],
+  "assertions": {
+    "A1": {"status": "pending", "description": "Build is clean", "evidence": null},
+    "A2": {"status": "pending", "description": "Spillover zone exists under columns", "evidence": null},
+    "A3": {"status": "pending", "description": "Spillover preserves stream order (right-col footnotes continue first)", "evidence": null},
+    "A4": {"status": "pending", "description": "Rebbe-of-Radomsk endnote (block 16, en #3) lands in left col + spillover", "evidence": null},
+    "A5": {"status": "pending", "description": "Page count does not increase from M1", "evidence": null},
+    "A6": {"status": "pending", "description": "Audit score >= 55.0", "evidence": null}
+  },
+  "baseline_target": {
+    "page_count_max": 10,
+    "audit_score_min": 55.0
+  }
+}

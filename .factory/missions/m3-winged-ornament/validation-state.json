@@ -1,0 +1,13 @@
+{
+  "mission_id": "m3-winged-ornament",
+  "status": "not_started",
+  "created": "2026-04-22",
+  "prerequisites": [],
+  "assertions": {
+    "A1": {"status": "pending", "description": "Build is clean", "evidence": null},
+    "A2": {"status": "pending", "description": "Ornament appears on exactly end-of-chapter pages (27, 40, 51 → rendered pages 3, 7, 10)", "evidence": null},
+    "A3": {"status": "pending", "description": "Ornament visually matches the reference winged-cherub glyph", "evidence": null},
+    "A4": {"status": "pending", "description": "Ornament is horizontally centered (<= 2mm off midline)", "evidence": null},
+    "A5": {"status": "pending", "description": "Audit score does not regress", "evidence": null}
+  }
+}

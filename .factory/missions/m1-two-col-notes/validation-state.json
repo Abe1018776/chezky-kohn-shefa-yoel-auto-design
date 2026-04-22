@@ -1,0 +1,18 @@
+{
+  "mission_id": "m1-two-col-notes",
+  "status": "not_started",
+  "created": "2026-04-22",
+  "assertions": {
+    "A1": {"status": "pending", "description": "Build is clean", "evidence": null},
+    "A2": {"status": "pending", "description": "Pages with endnotes show two columns", "evidence": null},
+    "A3": {"status": "pending", "description": "Footnotes-only pages show single centered rule header", "evidence": null},
+    "A4": {"status": "pending", "description": "Independent Hebrew numbering streams", "evidence": null},
+    "A5": {"status": "pending", "description": "Page count stays in 9..12 range", "evidence": null},
+    "A6": {"status": "pending", "description": "Audit score does not regress below 48.0", "evidence": null}
+  },
+  "baseline": {
+    "page_count": 10,
+    "audit_score": 48.3,
+    "build_time_sec": 1.1
+  }
+}
