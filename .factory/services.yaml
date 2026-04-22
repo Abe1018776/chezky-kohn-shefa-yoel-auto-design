@@ -1,0 +1,70 @@
+# Services manifest for the Shefa Shlomo Phase-2 mission.
+#
+# This pipeline is FILE-BASED with NO long-running services. All work
+# happens via one-shot commands executed on the `sefer-design` Linux
+# sandbox accessed over SSH from the Windows host.
+#
+# SSH prefix used by every command below (not repeated in each entry):
+#
+#   ssh.exe -o "ProxyCommand=C:\\Users\\Main\\bin\\droid.exe computer ssh %h --proxy" \
+#           -o "StrictHostKeyChecking=no" \
+#           -o "UserKnownHostsFile=NUL" \
+#           -o "IdentityFile=C:\\Users\\Main\\.factory\\.ssh\\id_ed25519" \
+#           -o "IdentitiesOnly=yes" \
+#           -o "User=factory-user" sefer-design
+#
+# Workers should compose commands as:
+#   ssh.exe <PROXY_OPTS> sefer-design "cd ~/chezky-kohn-shefa-yoel-auto-design && <command_body>"
+
+commands:
+  # Install / bootstrap — no-op for convert.py (stdlib only) and Typst
+  # (already at ~/.local/bin/typst on sandbox). pypdf is user-installed
+  # on demand in init.sh. Windows host has no deps.
+  install: |
+    # no-op — sandbox is preprovisioned with python3 + typst
+    true
+
+  # Run the JSON → Typst converter
+  convert: |
+    cd ~/chezky-kohn-shefa-yoel-auto-design && python3 python/convert.py
+
+  # Compile the book PDF
+  build-pdf: |
+    cd ~/chezky-kohn-shefa-yoel-auto-design && ~/.local/bin/typst compile --root . --font-path typst/fonts build/book.typ build/book.pdf
+
+  # Render per-page PNGs at 120 ppi (used by audit + visual inspection)
+  build-png: |
+    cd ~/chezky-kohn-shefa-yoel-auto-design && ~/.local/bin/typst compile --root . --font-path typst/fonts build/book.typ 'build/page-{n}.png' --ppi 120 --format png
+
+  # Full pipeline: clean → convert → PDF → PNG
+  build: |
+    cd ~/chezky-kohn-shefa-yoel-auto-design && rm -rf build && mkdir build && python3 python/convert.py && ~/.local/bin/typst compile --root . --font-path typst/fonts build/book.typ build/book.pdf && ~/.local/bin/typst compile --root . --font-path typst/fonts build/book.typ 'build/page-{n}.png' --ppi 120 --format png
+
+  # Run the image_diff audit against reference_scans/
+  audit: |
+    cd ~/chezky-kohn-shefa-yoel-auto-design && python3 audit/image_diff.py
+
+  # Full build + audit — the canonical "test" command for the project
+  test: |
+    cd ~/chezky-kohn-shefa-yoel-auto-design && rm -rf build && mkdir build && python3 python/convert.py && ~/.local/bin/typst compile --root . --font-path typst/fonts build/book.typ build/book.pdf && ~/.local/bin/typst compile --root . --font-path typst/fonts build/book.typ 'build/page-{n}.png' --ppi 120 --format png && python3 audit/image_diff.py
+
+  # Determinism check: build twice and compare sha256
+  test-determinism: |
+    cd ~/chezky-kohn-shefa-yoel-auto-design && rm -rf build ~/.cache/typst && python3 python/convert.py && ~/.local/bin/typst compile --root . --font-path typst/fonts build/book.typ build/book.pdf && sha256sum build/book.pdf > /tmp/sha1.txt && rm -rf build ~/.cache/typst && python3 python/convert.py && ~/.local/bin/typst compile --root . --font-path typst/fonts build/book.typ build/book.pdf && sha256sum build/book.pdf > /tmp/sha2.txt && diff /tmp/sha1.txt /tmp/sha2.txt && echo "DETERMINISTIC" || echo "NON-DETERMINISTIC"
+
+  # No formal lint target — Python convert.py is small; Typst has no lint.
+  # If pyflakes etc. are desired later, add here.
+  lint: |
+    true
+
+  # No typecheck either (dynamic Python, Typst is typechecked by the compiler).
+  typecheck: |
+    true
+
+  # Report versions (useful for debugging across sandbox / sandbox refreshes)
+  versions: |
+    cd ~/chezky-kohn-shefa-yoel-auto-design && ~/.local/bin/typst --version && python3 --version && git rev-parse HEAD
+
+services:
+  # No long-running services for this pipeline.
+  {}
