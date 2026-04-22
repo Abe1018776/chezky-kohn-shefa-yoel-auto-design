@@ -1,0 +1,36 @@
+{
+  "generated_page_count": 15,
+  "reference_scan_count": 20,
+  "description": "Mapping from generated PDF page index (1..N, 1-indexed) to the reference_scans/page_*.png that is its semantic ground truth, or null if no suitable reference exists. See .factory/library/audit-alignment.md for the full derivation + regeneration procedure.",
+  "derivation": {
+    "gen_chapter_ranges": {
+      "1": [1, 7],
+      "2": [8, 12],
+      "3": [13, 15]
+    },
+    "ref_chapter_ranges": {
+      "1": ["page_105.png", "page_113.png"],
+      "2": ["page_114.png", "page_118.png"],
+      "3": ["page_119.png", "page_122.png"]
+    },
+    "ref_backmatter_unmapped": ["page_123.png", "page_124.png"],
+    "notes": "At M1-close: ch2+ch3 use chapter-aware 1:1 pinning (opener→opener, ornament→ornament). Ch1 uses positional 1-to-1 (gen 1-7 → ref 105-111) because ch1 has 9 ref pages vs 7 gen pages, AND the M1 ornament is a placeholder '— ∞ —' string that visually doesn't match the winged-cherub glyph on ref 113. Re-derive chapter 1 to fully semantic (pinning gen 7 → ref 113) once M3 replaces the placeholder with the real ornament SVG; the cherub-to-cherub visual match is expected to lift gen-7's score and enable the full chapter-aware mapping without regression."
+  },
+  "alignment": {
+    "1":  "page_105.png",
+    "2":  "page_106.png",
+    "3":  "page_107.png",
+    "4":  "page_108.png",
+    "5":  "page_109.png",
+    "6":  "page_110.png",
+    "7":  "page_111.png",
+    "8":  "page_114.png",
+    "9":  "page_115.png",
+    "10": "page_116.png",
+    "11": "page_117.png",
+    "12": "page_118.png",
+    "13": "page_119.png",
+    "14": "page_120.png",
+    "15": "page_122.png"
+  }
+}

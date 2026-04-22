@@ -21,11 +21,12 @@ PNGs and does a pure Pillow-based comparison.
 from __future__ import annotations
 
 import argparse
+import json
 import subprocess
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 
 def _try_import(name):
@@ -156,12 +157,60 @@ def detect_notes_header_text(png_path: Path) -> bool:
     return min(row_means) < page_mean * 0.85
 
 
+def load_alignment(path: Path, ref_dir: Path) -> Optional[Dict[int, Optional[Path]]]:
+    """Load a committed generated-page → reference-scan alignment map if present.
+
+    The alignment file (default: ``audit/alignment.json``) lets the pipeline's
+    per-page count drift from the reference-scan count (20) without silently
+    miscomparing. Schema:
+
+        {
+          "alignment": { "<generated_page_1_indexed>": "page_NNN.png" | null, ... },
+          ...  // other informational keys ignored here
+        }
+
+    Returns a dict {1-indexed-generated-page: Path | None}, or None if the
+    file is missing (callers fall back to positional zip).
+    """
+    if not path.exists():
+        return None
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError) as exc:
+        print(f"warning: failed to read {path}: {exc}; falling back to positional",
+              file=sys.stderr)
+        return None
+    raw = data.get("alignment")
+    if not isinstance(raw, dict):
+        print(f"warning: {path} has no 'alignment' object; falling back to positional",
+              file=sys.stderr)
+        return None
+    out: Dict[int, Optional[Path]] = {}
+    for k, v in raw.items():
+        try:
+            idx = int(k)
+        except (TypeError, ValueError):
+            continue
+        if v is None:
+            out[idx] = None
+        else:
+            out[idx] = ref_dir / str(v)
+    return out
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--output", type=Path, default=Path("build/book.pdf"))
     ap.add_argument("--reference", type=Path, default=Path("reference_scans"))
     ap.add_argument("--report", type=Path, default=Path("build/audit_report.md"))
     ap.add_argument("--out-pngs", type=Path, default=Path("build"))
+    ap.add_argument(
+        "--alignment",
+        type=Path,
+        default=Path("audit/alignment.json"),
+        help="Generated→reference page alignment map (JSON). "
+             "When absent, falls back to positional zip.",
+    )
     args = ap.parse_args()
 
     if PIL is None:
@@ -178,10 +227,27 @@ def main() -> int:
         print("No pages to compare.")
         return 1
 
+    alignment_map = load_alignment(args.alignment, args.reference)
+    if alignment_map is not None:
+        print(f"using alignment map: {args.alignment} "
+              f"({sum(1 for v in alignment_map.values() if v is not None)} "
+              f"of {len(pdf_pages)} generated pages mapped)")
+    else:
+        print("no alignment map; using positional zip against reference pages")
+
     reports: List[PageReport] = []
     for i, out in enumerate(pdf_pages):
-        ref = ref_pages[i] if i < len(ref_pages) else None
-        r = PageReport(index=i + 1, ref_path=ref, out_path=out)
+        gen_index_1 = i + 1
+        if alignment_map is not None:
+            ref = alignment_map.get(gen_index_1)
+            if ref is not None and not ref.exists():
+                print(f"warning: alignment maps gen page {gen_index_1} → "
+                      f"{ref.name} which does not exist; treating as unmapped",
+                      file=sys.stderr)
+                ref = None
+        else:
+            ref = ref_pages[i] if i < len(ref_pages) else None
+        r = PageReport(index=gen_index_1, ref_path=ref, out_path=out)
         if ref is None:
             r.notes.append("no matching reference page")
         else:
