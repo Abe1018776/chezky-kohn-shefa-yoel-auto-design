@@ -1,0 +1,271 @@
+{
+  "milestone": "m1-two-col-notes",
+  "groupId": "rerun-m1-005-014",
+  "assertions": [
+    {
+      "id": "VAL-M1-005",
+      "status": "fail",
+      "evidence": [
+        "C:\\Users\\Main\\.factory\\missions\\0e4c58ac-d782-472e-a3fd-a6ae036604cf\\evidence\\m1-two-col-notes\\rerun-m1-005-014\\rerun-m1-005-014-metrics.json"
+      ],
+      "evidenceTables": {
+        "fn_markers_in_order": [
+          {
+            "chapter": 1,
+            "fn_markers_in_order": [
+              "[א]",
+              "[ב]",
+              "[ג]",
+              "[ד]",
+              "[ה]",
+              "[ו]",
+              "[ז]",
+              "[ח]",
+              "[ט]",
+              "[י]",
+              "[יא]"
+            ]
+          },
+          {
+            "chapter": 2,
+            "fn_markers_in_order": [
+              "[א]",
+              "[ב]",
+              "[ג]",
+              "[ד]",
+              "[ה]",
+              "[ו]"
+            ]
+          },
+          {
+            "chapter": 3,
+            "fn_markers_in_order": [
+              "[א]",
+              "[ב]",
+              "[ג]",
+              "[ד]",
+              "[ה]",
+              "[ו]",
+              "[ז]"
+            ]
+          }
+        ],
+        "en_markers_in_order": [
+          {
+            "chapter": 1,
+            "en_markers_in_order": [
+              "[א]",
+              "[ב]",
+              "[ג]",
+              "[ד]"
+            ]
+          },
+          {
+            "chapter": 2,
+            "en_markers_in_order": [
+              "[א]",
+              "[ב]",
+              "[ג]",
+              "[ד]"
+            ]
+          },
+          {
+            "chapter": 3,
+            "en_markers_in_order": [
+              "[א]",
+              "[ב]"
+            ]
+          }
+        ],
+        "chapter_first_case_b_boundary": [
+          {
+            "chapter": 1,
+            "first_case_b_page": 1,
+            "right_first_marker": "[א]",
+            "left_first_marker": "[א]",
+            "boundary_pass": true
+          },
+          {
+            "chapter": 2,
+            "first_case_b_page": 9,
+            "right_first_marker": "[ב]",
+            "left_first_marker": "[א]",
+            "boundary_pass": false
+          },
+          {
+            "chapter": 3,
+            "first_case_b_page": 14,
+            "right_first_marker": "[ה]",
+            "left_first_marker": "[א]",
+            "boundary_pass": false
+          }
+        ]
+      },
+      "reason": "Per-stream per-chapter marker sequences are strictly monotonic and reset at chapter boundaries, but chapter-first Case-B boundary requirement (both [א]) fails: chapter 2 page 9: right=[ב] left=[א]; chapter 3 page 14: right=[ה] left=[א]"
+    },
+    {
+      "id": "VAL-M1-014",
+      "status": "pass",
+      "evidence": [
+        "C:\\Users\\Main\\.factory\\missions\\0e4c58ac-d782-472e-a3fd-a6ae036604cf\\evidence\\m1-two-col-notes\\rerun-m1-005-014\\rerun-m1-005-014-metrics.json",
+        "C:\\Users\\Main\\.factory\\missions\\0e4c58ac-d782-472e-a3fd-a6ae036604cf\\evidence\\m1-two-col-notes\\rerun-m1-005-014\\VAL-M1-014-page-01-subtitle.png",
+        "C:\\Users\\Main\\.factory\\missions\\0e4c58ac-d782-472e-a3fd-a6ae036604cf\\evidence\\m1-two-col-notes\\rerun-m1-005-014\\VAL-M1-014-page-01-body.png",
+        "C:\\Users\\Main\\.factory\\missions\\0e4c58ac-d782-472e-a3fd-a6ae036604cf\\evidence\\m1-two-col-notes\\rerun-m1-005-014\\VAL-M1-014-page-07-subtitle.png",
+        "C:\\Users\\Main\\.factory\\missions\\0e4c58ac-d782-472e-a3fd-a6ae036604cf\\evidence\\m1-two-col-notes\\rerun-m1-005-014\\VAL-M1-014-page-07-body.png",
+        "C:\\Users\\Main\\.factory\\missions\\0e4c58ac-d782-472e-a3fd-a6ae036604cf\\evidence\\m1-two-col-notes\\rerun-m1-005-014\\VAL-M1-014-page-12-subtitle.png",
+        "C:\\Users\\Main\\.factory\\missions\\0e4c58ac-d782-472e-a3fd-a6ae036604cf\\evidence\\m1-two-col-notes\\rerun-m1-005-014\\VAL-M1-014-page-12-body.png",
+        "C:\\Users\\Main\\.factory\\missions\\0e4c58ac-d782-472e-a3fd-a6ae036604cf\\evidence\\m1-two-col-notes\\rerun-m1-005-014\\VAL-M1-014-page-02-subtitle.png",
+        "C:\\Users\\Main\\.factory\\missions\\0e4c58ac-d782-472e-a3fd-a6ae036604cf\\evidence\\m1-two-col-notes\\rerun-m1-005-014\\VAL-M1-014-page-02-body.png",
+        "C:\\Users\\Main\\.factory\\missions\\0e4c58ac-d782-472e-a3fd-a6ae036604cf\\evidence\\m1-two-col-notes\\rerun-m1-005-014\\VAL-M1-014-page-09-subtitle.png",
+        "C:\\Users\\Main\\.factory\\missions\\0e4c58ac-d782-472e-a3fd-a6ae036604cf\\evidence\\m1-two-col-notes\\rerun-m1-005-014\\VAL-M1-014-page-09-body.png",
+        "C:\\Users\\Main\\.factory\\missions\\0e4c58ac-d782-472e-a3fd-a6ae036604cf\\evidence\\m1-two-col-notes\\rerun-m1-005-014\\VAL-M1-014-page-14-subtitle.png",
+        "C:\\Users\\Main\\.factory\\missions\\0e4c58ac-d782-472e-a3fd-a6ae036604cf\\evidence\\m1-two-col-notes\\rerun-m1-005-014\\VAL-M1-014-page-14-body.png"
+      ],
+      "evidenceTables": {
+        "subtitle_alignment_luma_size_samples": [
+          {
+            "page": 1,
+            "subtitle_index_in_stream": 1,
+            "subtitle_y_pt": 203.5886672613189,
+            "subtitle_y_px": 339.36,
+            "right_edge_gap_px": 119,
+            "subtitle_ink_luma": 152.49,
+            "body_ink_luma": 41.57,
+            "luma_delta_pct": 43.5,
+            "subtitle_median_component_height_px": 11.0,
+            "body_median_component_height_px": 17.0,
+            "subtitle_to_body_height_ratio": 0.647,
+            "alignment_pass": true,
+            "luma_pass": true,
+            "size_pass": true,
+            "sample_pass": true
+          },
+          {
+            "page": 7,
+            "subtitle_index_in_stream": 12,
+            "subtitle_y_pt": 203.5886672613189,
+            "subtitle_y_px": 339.36,
+            "right_edge_gap_px": 119,
+            "subtitle_ink_luma": 150.26,
+            "body_ink_luma": 40.97,
+            "luma_delta_pct": 42.86,
+            "subtitle_median_component_height_px": 11.0,
+            "body_median_component_height_px": 17.0,
+            "subtitle_to_body_height_ratio": 0.647,
+            "alignment_pass": true,
+            "luma_pass": true,
+            "size_pass": true,
+            "sample_pass": true
+          },
+          {
+            "page": 12,
+            "subtitle_index_in_stream": 17,
+            "subtitle_y_pt": 203.5886672613189,
+            "subtitle_y_px": 339.36,
+            "right_edge_gap_px": 95,
+            "subtitle_ink_luma": 153.31,
+            "body_ink_luma": 41.92,
+            "luma_delta_pct": 43.68,
+            "subtitle_median_component_height_px": 11.0,
+            "body_median_component_height_px": 17.0,
+            "subtitle_to_body_height_ratio": 0.647,
+            "alignment_pass": true,
+            "luma_pass": true,
+            "size_pass": true,
+            "sample_pass": true
+          },
+          {
+            "page": 2,
+            "subtitle_index_in_stream": 3,
+            "subtitle_y_pt": 260.79949606299215,
+            "subtitle_y_px": 434.72,
+            "right_edge_gap_px": 95,
+            "subtitle_ink_luma": 155.47,
+            "body_ink_luma": 39.31,
+            "luma_delta_pct": 45.55,
+            "subtitle_median_component_height_px": 11.0,
+            "body_median_component_height_px": 16.0,
+            "subtitle_to_body_height_ratio": 0.688,
+            "alignment_pass": true,
+            "luma_pass": true,
+            "size_pass": true,
+            "sample_pass": true
+          },
+          {
+            "page": 9,
+            "subtitle_index_in_stream": 14,
+            "subtitle_y_pt": 123.67949606299213,
+            "subtitle_y_px": 206.16,
+            "right_edge_gap_px": 118,
+            "subtitle_ink_luma": 149.44,
+            "body_ink_luma": 43.49,
+            "luma_delta_pct": 41.55,
+            "subtitle_median_component_height_px": 11.0,
+            "body_median_component_height_px": 17.0,
+            "subtitle_to_body_height_ratio": 0.647,
+            "alignment_pass": true,
+            "luma_pass": true,
+            "size_pass": true,
+            "sample_pass": true
+          },
+          {
+            "page": 14,
+            "subtitle_index_in_stream": 20,
+            "subtitle_y_pt": 62.36220472440945,
+            "subtitle_y_px": 103.95,
+            "right_edge_gap_px": 95,
+            "subtitle_ink_luma": 151.56,
+            "body_ink_luma": 43.68,
+            "luma_delta_pct": 42.3,
+            "subtitle_median_component_height_px": 11.0,
+            "body_median_component_height_px": 17.0,
+            "subtitle_to_body_height_ratio": 0.647,
+            "alignment_pass": true,
+            "luma_pass": true,
+            "size_pass": true,
+            "sample_pass": true
+          }
+        ]
+      },
+      "reason": "Subtitle metadata-driven sampling passed on 6 pages: right-edge gap 95-119px (<=130), luma delta 41.55-45.55% (>30), subtitle/body height ratio max 0.688 (<1)."
+    }
+  ],
+  "toolsUsed": [
+    "shell",
+    "Typst query metadata",
+    "PIL",
+    "python3"
+  ],
+  "frictions": [
+    {
+      "description": "Sandbox repo was not on the host validation commit initially; synchronized by transferring a local git bundle and checking out commit 901e0e7 in detached HEAD before rebuild.",
+      "resolved": true,
+      "resolution": "Stashed sandbox working tree, fetched /tmp/main-sync.bundle, checked out 901e0e7, rebuilt artifacts.",
+      "affectedAssertions": [
+        "VAL-M1-005",
+        "VAL-M1-014"
+      ]
+    }
+  ],
+  "blockers": [],
+  "artifacts": [
+    "build/book.pdf",
+    "build/page-{n}.png",
+    "build/notes.json",
+    "build/subtitle-loc.json",
+    "C:\\Users\\Main\\.factory\\missions\\0e4c58ac-d782-472e-a3fd-a6ae036604cf\\evidence\\m1-two-col-notes\\rerun-m1-005-014\\rerun-m1-005-014-metrics.json",
+    "C:\\Users\\Main\\.factory\\missions\\0e4c58ac-d782-472e-a3fd-a6ae036604cf\\evidence\\m1-two-col-notes\\rerun-m1-005-014\\VAL-M1-014-page-01-subtitle.png",
+    "C:\\Users\\Main\\.factory\\missions\\0e4c58ac-d782-472e-a3fd-a6ae036604cf\\evidence\\m1-two-col-notes\\rerun-m1-005-014\\VAL-M1-014-page-01-body.png",
+    "C:\\Users\\Main\\.factory\\missions\\0e4c58ac-d782-472e-a3fd-a6ae036604cf\\evidence\\m1-two-col-notes\\rerun-m1-005-014\\VAL-M1-014-page-07-subtitle.png",
+    "C:\\Users\\Main\\.factory\\missions\\0e4c58ac-d782-472e-a3fd-a6ae036604cf\\evidence\\m1-two-col-notes\\rerun-m1-005-014\\VAL-M1-014-page-07-body.png",
+    "C:\\Users\\Main\\.factory\\missions\\0e4c58ac-d782-472e-a3fd-a6ae036604cf\\evidence\\m1-two-col-notes\\rerun-m1-005-014\\VAL-M1-014-page-12-subtitle.png",
+    "C:\\Users\\Main\\.factory\\missions\\0e4c58ac-d782-472e-a3fd-a6ae036604cf\\evidence\\m1-two-col-notes\\rerun-m1-005-014\\VAL-M1-014-page-12-body.png",
+    "C:\\Users\\Main\\.factory\\missions\\0e4c58ac-d782-472e-a3fd-a6ae036604cf\\evidence\\m1-two-col-notes\\rerun-m1-005-014\\VAL-M1-014-page-02-subtitle.png",
+    "C:\\Users\\Main\\.factory\\missions\\0e4c58ac-d782-472e-a3fd-a6ae036604cf\\evidence\\m1-two-col-notes\\rerun-m1-005-014\\VAL-M1-014-page-02-body.png",
+    "C:\\Users\\Main\\.factory\\missions\\0e4c58ac-d782-472e-a3fd-a6ae036604cf\\evidence\\m1-two-col-notes\\rerun-m1-005-014\\VAL-M1-014-page-09-subtitle.png",
+    "C:\\Users\\Main\\.factory\\missions\\0e4c58ac-d782-472e-a3fd-a6ae036604cf\\evidence\\m1-two-col-notes\\rerun-m1-005-014\\VAL-M1-014-page-09-body.png",
+    "C:\\Users\\Main\\.factory\\missions\\0e4c58ac-d782-472e-a3fd-a6ae036604cf\\evidence\\m1-two-col-notes\\rerun-m1-005-014\\VAL-M1-014-page-14-subtitle.png",
+    "C:\\Users\\Main\\.factory\\missions\\0e4c58ac-d782-472e-a3fd-a6ae036604cf\\evidence\\m1-two-col-notes\\rerun-m1-005-014\\VAL-M1-014-page-14-body.png"
+  ],
+  "generatedAt": "2026-04-23T00:43:32.627565+00:00"
+}

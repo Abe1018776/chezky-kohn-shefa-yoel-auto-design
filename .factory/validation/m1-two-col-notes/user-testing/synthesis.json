@@ -1,57 +1,27 @@
 {
   "milestone": "m1-two-col-notes",
-  "round": 1,
+  "round": 2,
   "status": "fail",
   "assertionsSummary": {
-    "total": 16,
-    "passed": 14,
-    "failed": 2,
+    "total": 2,
+    "passed": 1,
+    "failed": 1,
     "blocked": 0
   },
   "passedAssertions": [
-    "VAL-CROSS-010",
-    "VAL-M1-001",
-    "VAL-M1-002",
-    "VAL-M1-003",
-    "VAL-M1-004",
-    "VAL-M1-006",
-    "VAL-M1-007",
-    "VAL-M1-008",
-    "VAL-M1-009",
-    "VAL-M1-010",
-    "VAL-M1-011",
-    "VAL-M1-012",
-    "VAL-M1-013",
-    "VAL-M1-015"
+    "VAL-M1-014"
   ],
   "failedAssertions": [
     {
       "id": "VAL-M1-005",
-      "reason": "Only 1/9 Case-B pages had both first markers at the stream-start marker; 8/9 pages showed non-start markers on at least one side."
-    },
-    {
-      "id": "VAL-M1-014",
-      "reason": "Luma and size checks on sampled chapter-opener pages (1,7,12) passed (subtitle luma +57.6% to +74.7% vs body; subtitle median component height 10px vs body 11.5-17px), but subtitle right-alignment check failed on all samples (right-edge gap 318-339px from page right edge)."
+      "reason": "Per-stream per-chapter marker sequences are strictly monotonic and reset at chapter boundaries, but chapter-first Case-B boundary requirement (both [א]) fails: chapter 2 page 9: right=[ב] left=[א]; chapter 3 page 14: right=[ה] left=[א]"
     }
   ],
   "blockedAssertions": [],
-  "appliedUpdates": [
-    {
-      "target": "user-testing.md",
-      "description": "Added Validation Concurrency limits and Flow Validator Guidance for build-artifacts surface.",
-      "source": "setup"
-    },
-    {
-      "target": "user-testing.md",
-      "description": "Added runtime notes documenting pypdf RTL fallback usage and reversible cleanup approach in delegated sessions.",
-      "source": "flow-report"
-    }
-  ],
-  "previousRound": null,
+  "appliedUpdates": [],
+  "previousRound": ".factory/validation/m1-two-col-notes/user-testing/synthesis.round1.json",
   "flowReports": [
-    "C:/Users/Main/chezky-kohn-shefa-yoel-auto-design/.factory/validation/m1-two-col-notes/user-testing/flows/group-a.json",
-    "C:/Users/Main/chezky-kohn-shefa-yoel-auto-design/.factory/validation/m1-two-col-notes/user-testing/flows/group-b.json",
-    "C:/Users/Main/chezky-kohn-shefa-yoel-auto-design/.factory/validation/m1-two-col-notes/user-testing/flows/group-c.json"
+    "C:/Users/Main/chezky-kohn-shefa-yoel-auto-design/.factory/validation/m1-two-col-notes/user-testing/flows/rerun-m1-005-014.json"
   ],
-  "generatedAt": "2026-04-23T00:11:21.079282+00:00"
+  "generatedAt": "2026-04-23T00:44:36.056556+00:00"
 }
