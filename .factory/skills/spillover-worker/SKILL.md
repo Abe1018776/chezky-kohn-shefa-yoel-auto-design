@@ -32,7 +32,7 @@ Before starting, READ:
 - SSH to `sefer-design`. Verify HEAD matches local.
 - Run the `build` + `audit` commands. Confirm all M1 VAL-* assertions still pass (replay `validation-state.json::assertions.VAL-M1-*`).
 - If any M1 assertion is not passed, STOP and escalate — M2 cannot proceed until M1 is green.
-- Read `validation-state.json::baselines.m1` — you need the M1 page count and audit score as baselines (VAL-M2-005, VAL-M2-006).
+- Read `validation-state.json::baselines.m1` — you need the M1 page count and audit score as baselines (VAL-M2-005, VAL-M2-006). VAL-M2-006 was converted from absolute threshold (originally ≥ 55.0) to a delta-based regression guard at commit-hash-TBD after empirical measurement showed the original threshold was unreachable under the audit scorer's old SSIM-heavy weighting; re-read the current contract text.
 
 ### 2. Understand the overflow landscape
 
@@ -73,7 +73,7 @@ In `typst/template.typ`:
 - Full build: `test` command from services.yaml.
 - Cross-verification per spillover page: for each page with a `#spillover` emission, confirm the col+spillover ids union equals the body-referenced ids set (VAL-M2-009).
 - Block 4 en #1 and Block 16 en #3 render full on single pages each (VAL-M2-011 + VAL-M2-004).
-- Score ≥ 55.0.
+- Audit score does not regress from M1 beyond 1-point noise tolerance (VAL-M2-006, delta-based). See current validation-contract.md text.
 - Update `validation-state.json::baselines.m2` = {pdf_page_count, audit_score, build_time_sec}. The file lives in your mission directory at `C:\Users\Main\.factory\missions\<mission-id>\validation-state.json`, NOT in the repo's `.factory/`. Use atomic read → mutate → write.
 
 ### 6. Self-verify every VAL-M2-* assertion
@@ -94,7 +94,7 @@ Single atomic commit for the feature.
   "assertionsVerified": [
     {"id": "VAL-M2-001", "status": "passed", "evidence": "clean build, no warnings"},
     {"id": "VAL-M2-004", "status": "passed", "evidence": "Radomsk endnote spans left-col + spillover on page 14; full text present via pypdf"},
-    {"id": "VAL-M2-006", "status": "passed", "evidence": "Average score: 56.2"},
+    {"id": "VAL-M2-006", "status": "passed", "evidence": "M2 score 65.3 vs baselines.m1.audit_score 66.0 (delta -0.7, within 1.0 tolerance)"},
     ...
   ],
   "baselinesWritten": {
