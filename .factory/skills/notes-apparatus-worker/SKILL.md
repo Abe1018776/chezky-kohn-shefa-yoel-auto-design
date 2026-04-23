@@ -68,11 +68,30 @@ the repo's `.factory/` folder. Use atomic read → mutate → write.
 Baselines represent the **PDF build output** (page count, audit score, build
 time), not audit instrumentation. If your feature changes only `audit/` files
 without touching `python/convert.py` or `typst/template.typ`, the PDF is
-unchanged and you do NOT need to update `baselines.m1.*` — the M1 green-gate
-baseline stays as the milestone's first green PDF build. Audit-script
-improvements that increase the scored number WITHOUT changing the PDF should
-be surfaced in the handoff's `whatWasImplemented`, not written into
-`baselines`.
+unchanged — in most cases you do NOT update `baselines.m1.*`.
+
+**EXCEPTION (orchestrator-authorized rebaselining):** If the orchestrator's
+feature description explicitly instructs you to overwrite baselines (e.g., a
+`*-rebaseline` feature after an audit reweight or pagination rework), do so.
+Audit weight changes and pagination changes both produce a score that lives
+on a different scale/semantics than the prior baseline; in those cases the
+orchestrator will explicitly authorize the rebaseline and tell you what new
+values to write. Never rebaseline spontaneously.
+
+**Alignment map regeneration:** Any pagination change in convert.py (new
+pagebreak logic, different page count) INVALIDATES audit/alignment.json
+which maps generated pages to reference scans. A stale alignment map can
+silently drop 10+ points from the audit score without any layout defect.
+After pagination changes, either re-derive alignment.json as part of your
+feature OR surface it as a blocking issue so the orchestrator creates a
+rebaseline feature.
+
+**M1/M2 baseline identity:** When M1 features and M2 features operate on
+the same HEAD (which is the case post-pair-keep — convert.py's pagination
+is global, not milestone-specific), `baselines.m1` and `baselines.m2`
+should be populated with the SAME values, explicitly. Do not leave a
+historical M1 baseline pointing at an earlier build the code no longer
+produces.
 
 - For `m1-typst-two-col-apparatus` (M1 green-gate): write to `baselines.m1`:
   - `pdf_page_count` (integer, from pypdf)
