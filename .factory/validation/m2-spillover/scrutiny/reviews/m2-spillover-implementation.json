@@ -1,0 +1,40 @@
+{
+  "featureId": "m2-spillover-implementation",
+  "reviewedAt": "2026-04-23T06:12:00Z",
+  "commitId": "0a6e30a",
+  "repoPath": "C:\\Users\\Main\\chezky-kohn-shefa-yoel-auto-design",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "pass",
+  "codeReview": {
+    "summary": "Reviewed feature metadata, the latest handoff/session (89b2330d-9753-4c6a-b08d-e2094f5b2190), transcript skeleton, and repository diffs for both the spillover implementation commit (969eebb) and the follow-up scorer/baseline commit (0a6e30a). The M2 implementation in python/convert.py and typst/template.typ covers the required spillover mechanics (col/spill partitioning, split-note continuation handling, fn-before-en spill ordering, fixed bottom-margin apparatus model), and the follow-up run aligns with the updated VAL-M2-006 delta-based contract and recorded baselines.m2. No blocking correctness/regression defects were found in reviewed scope.",
+    "issues": [
+      {
+        "file": "python/convert.py",
+        "line": 87,
+        "severity": "non_blocking",
+        "description": "Commentary is stale versus implementation: nearby comments describe an 85mm bottom margin and a 650-char capacity assumption, while code uses COL_CAPACITY_CHARS=1500 and template margin is 75mm. This is documentation drift in code comments, not a functional defect."
+      },
+      {
+        "file": "typst/template.typ",
+        "line": 616,
+        "severity": "non_blocking",
+        "description": "Comment references `COL_CAPACITY_CHARS = 650` but current converter constant is 1500. This mismatch can mislead future tuning/debug work."
+      }
+    ]
+  },
+  "sharedStateObservations": [
+    {
+      "area": "skills",
+      "observation": "The spillover-worker skill still contains outdated corpus-size guidance for the key long-note examples, which can misdirect validation focus.",
+      "evidence": ".factory/skills/spillover-worker/SKILL.md:44-45 says block 4 en#1 is ~2,500 chars and block 16 en#3 is ~1,700 chars, while handoff 2026-04-23T05-48-33-022Z__m2-spillover-implementation__89b2330d-9753-4c6a-b08d-e2094f5b2190.json reports measured lengths ~5,146 and ~501."
+    },
+    {
+      "area": "skills",
+      "observation": "The spillover-worker 'When to Return' guidance still encodes the old absolute-score framing, but the contract now uses a delta-based M2 regression guard after scorer rebalance.",
+      "evidence": ".factory/skills/spillover-worker/SKILL.md:115 ('Score improvement plateau below 55') vs validation-contract.md:147-153 (VAL-M2-006 delta-based condition against baselines.m1.audit_score)."
+    }
+  ],
+  "addressesFailureFrom": null,
+  "summary": "Pass. The feature implementation and follow-up rerun are contract-aligned for M2 spillover behavior and the updated delta-based audit guard; only non-blocking documentation/skill drift was identified."
+}

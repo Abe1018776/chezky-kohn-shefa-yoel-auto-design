@@ -1,0 +1,52 @@
+{
+  "milestone": "m2-spillover",
+  "round": 1,
+  "status": "pass",
+  "validatorsRun": {
+    "test": {
+      "passed": true,
+      "command": "ssh sefer-design: convert + typst compile (pdf/png) + typst query (notes/plain) + audit/image_diff.py",
+      "exitCode": 0
+    },
+    "typecheck": {
+      "passed": true,
+      "command": "ssh sefer-design: true",
+      "exitCode": 0
+    },
+    "lint": {
+      "passed": true,
+      "command": "ssh sefer-design: true",
+      "exitCode": 0
+    }
+  },
+  "reviewsSummary": {
+    "total": 2,
+    "passed": 2,
+    "failed": 0,
+    "failedFeatures": []
+  },
+  "blockingIssues": [],
+  "appliedUpdates": [],
+  "suggestedGuidanceUpdates": [
+    {
+      "target": "skills",
+      "suggestion": "Update `.factory/skills/spillover-worker/SKILL.md` long-note corpus-size examples so they match currently measured note lengths used in validation.",
+      "evidence": "Review `m2-spillover-implementation` cites mismatch between SKILL.md examples (~2,500/~1,700 chars) and measured current corpus lengths in handoff evidence (~5,146/~501).",
+      "isSystemic": false
+    },
+    {
+      "target": "skills",
+      "suggestion": "Update spillover-worker return/triage guidance to align with the current delta-based VAL-M2-006 regression guard instead of the retired absolute-score framing.",
+      "evidence": "Review `m2-spillover-implementation` flags SKILL.md 'Score improvement plateau below 55' guidance conflicting with `validation-contract.md` delta guard for VAL-M2-006.",
+      "isSystemic": true
+    },
+    {
+      "target": "skills",
+      "suggestion": "Align notes-apparatus-worker baseline guidance with orchestrator-approved audit-reweight/rebaseline features to avoid contradictory instructions.",
+      "evidence": "Review `m2-audit-rescore-rebalance` identifies conflict between `notes-apparatus-worker` skill baseline guidance and this mission's explicit requirement to rebaseline m1/m2 after scorer changes.",
+      "isSystemic": true
+    }
+  ],
+  "rejectedObservations": [],
+  "previousRound": null
+}

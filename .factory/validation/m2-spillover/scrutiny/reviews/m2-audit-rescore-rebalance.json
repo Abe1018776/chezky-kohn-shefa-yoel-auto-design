@@ -1,0 +1,22 @@
+{
+  "featureId": "m2-audit-rescore-rebalance",
+  "reviewedAt": "2026-04-23T01:56:00.1236989-04:00",
+  "commitId": "0a6e30a",
+  "repoPath": "C:\\Users\\Main\\chezky-kohn-shefa-yoel-auto-design",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "pass",
+  "codeReview": {
+    "summary": "Reviewed handoff/transcript evidence and commit 0a6e30a. The scorer rebalance is implemented as required (SSIM downweighted, structural terms upweighted, new page-aligned term added; weights sum to 1.0), report compatibility is preserved via the literal 'Average score:' line in build/audit_report.md, and verbose per-term diagnostics were added. Mission baselines reflect the rebalance (m1.audit_score=80.1, m2.audit_score=80.2), and the delta guard implication for VAL-M2-006/VAL-CROSS monotonicity is satisfied (delta +0.1 >= -1.0).",
+    "issues": []
+  },
+  "sharedStateObservations": [
+    {
+      "area": "skills",
+      "observation": "The notes-apparatus-worker skill has contradictory baseline guidance for this class of work: it says audit-only changes should not update baselines.m1, but this feature explicitly requires rebaselining m1/m2 after scorer reweighting.",
+      "evidence": ".factory/skills/notes-apparatus-worker/SKILL.md:68-71 vs mission feature contract in C:\\Users\\Main\\.factory\\missions\\0e4c58ac-d782-472e-a3fd-a6ae036604cf\\features.json:380 and expectedBehavior at :394."
+    }
+  ],
+  "addressesFailureFrom": null,
+  "summary": "Pass. The implementation covers scoring reweight correctness, baseline updates, and delta-based regression-guard implications for M2 without introducing code-level defects in reviewed scope."
+}
