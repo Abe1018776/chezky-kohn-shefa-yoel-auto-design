@@ -39,6 +39,33 @@ def _try_import(name):
 PIL = _try_import("PIL")
 
 
+# Term weights for the composite audit score.
+#
+# Historical (M1-era) weights were 0.50/0.20/0.20/0.10 over SSIM / header /
+# notes-header / phash. Empirical measurement during M2 spillover validation
+# (mission 0e4c58ac, feature m2-audit-rescore-rebalance at commit 15ca8e3)
+# showed that the SSIM term produces sub-scores of 0.004–0.088 when comparing
+# a pristine CMYK-rendered PDF against yellowed paper reference scans — a
+# fundamental property of the comparison, not a layout deficiency. With 0.5
+# weight on SSIM the scorer saturated at ~49.0 regardless of layout quality
+# and capacity sweeps moved the average by ≤0.3 points, leaving no room for
+# meaningful regression signal.
+#
+# The reweighting below (i) drops SSIM from 0.50 → 0.15, (ii) raises the two
+# structural/semantic terms (header_match, notes_header_found) from 0.20 each
+# to 0.30 each, (iii) bumps phash from 0.10 → 0.15, and (iv) introduces a new
+# page_aligned term at 0.10 that rewards stable pagination — a generated
+# page with a valid reference (via positional zip OR audit/alignment.json)
+# counts as aligned. Rationale: when layouts drift and pagination shifts,
+# the alignment map becomes incomplete → the term drops → regression is
+# detected. Weights sum to 1.0.
+_WEIGHT_SSIM = 0.15
+_WEIGHT_HEADER = 0.30
+_WEIGHT_NOTES_HDR = 0.30
+_WEIGHT_PHASH = 0.15
+_WEIGHT_PAGE_ALIGNED = 0.10
+
+
 @dataclass
 class PageReport:
     index: int
@@ -48,16 +75,29 @@ class PageReport:
     phash_dist: int = 0
     header_match: float = 0.0
     notes_header_found: bool = False
+    page_aligned: bool = False
     notes: List[str] = field(default_factory=list)
 
+    @property
+    def phash_pct(self) -> float:
+        return max(0.0, 1 - self.phash_dist / 64.0)
+
+    @property
+    def notes_hdr_value(self) -> float:
+        return 1.0 if self.notes_header_found else 0.0
+
+    @property
+    def page_aligned_value(self) -> float:
+        return 1.0 if self.page_aligned else 0.0
+
     def score(self) -> float:
-        # Weighted composite: 50% SSIM, 20% header, 20% notes-header, 10% phash.
-        phash_pct = max(0.0, 1 - self.phash_dist / 64.0)
+        # Weighted composite; see _WEIGHT_* constants for rationale + history.
         return (
-            0.5 * self.ssim
-            + 0.2 * self.header_match
-            + 0.2 * (1.0 if self.notes_header_found else 0.0)
-            + 0.1 * phash_pct
+            _WEIGHT_SSIM * self.ssim
+            + _WEIGHT_HEADER * self.header_match
+            + _WEIGHT_NOTES_HDR * self.notes_hdr_value
+            + _WEIGHT_PHASH * self.phash_pct
+            + _WEIGHT_PAGE_ALIGNED * self.page_aligned_value
         ) * 100
 
 
@@ -211,6 +251,13 @@ def main() -> int:
         help="Generated→reference page alignment map (JSON). "
              "When absent, falls back to positional zip.",
     )
+    ap.add_argument(
+        "--verbose",
+        action="store_true",
+        help="Print per-term means (ssim, header, notes-hdr, phash, "
+             "page-aligned) across all scored pages to stdout after the "
+             "report is written. Useful for scorer reweighting + diagnosis.",
+    )
     args = ap.parse_args()
 
     if PIL is None:
@@ -250,28 +297,38 @@ def main() -> int:
         r = PageReport(index=gen_index_1, ref_path=ref, out_path=out)
         if ref is None:
             r.notes.append("no matching reference page")
+            r.page_aligned = False
         else:
             im_out = Image.open(out)
             im_ref = Image.open(ref)
             r.ssim = ssim(im_out, im_ref)
             r.phash_dist = hamming(phash(im_out), phash(im_ref))
             r.header_match = header_strip_match(im_out, im_ref)
+            r.page_aligned = True
         r.notes_header_found = detect_notes_header_text(out)
         reports.append(r)
 
     # Write report.
     lines = ["# Audit Report", "",
-             "| # | Ref | SSIM | pHash | Header | Notes-hdr | Score |",
-             "|---|---|---|---|---|---|---|"]
+             "| # | Ref | SSIM | pHash | Header | Notes-hdr | Aligned | Score |",
+             "|---|---|---|---|---|---|---|---|"]
     for r in reports:
         ref_name = r.ref_path.name if r.ref_path else "-"
         lines.append(
             f"| {r.index} | {ref_name} | {r.ssim:.3f} | "
             f"{r.phash_dist} | {r.header_match:.3f} | "
-            f"{'yes' if r.notes_header_found else 'no'} | {r.score():.1f} |"
+            f"{'yes' if r.notes_header_found else 'no'} | "
+            f"{'yes' if r.page_aligned else 'no'} | {r.score():.1f} |"
         )
     avg = sum(r.score() for r in reports) / len(reports)
     lines += ["", f"**Average score: {avg:.1f} / 100**", ""]
+    lines.append("## Scorer weights")
+    lines.append(
+        f"SSIM {_WEIGHT_SSIM:.2f} · Header {_WEIGHT_HEADER:.2f} · "
+        f"Notes-hdr {_WEIGHT_NOTES_HDR:.2f} · pHash {_WEIGHT_PHASH:.2f} · "
+        f"Page-aligned {_WEIGHT_PAGE_ALIGNED:.2f}"
+    )
+    lines.append("")
     lines.append("## Checklist (hard requirements)")
     lines.append(f"- [{'x' if all(r.header_match > 0.8 for r in reports) else ' '}] "
                  "Running header present on all pages")
@@ -283,6 +340,29 @@ def main() -> int:
     args.report.write_text("\n".join(lines), encoding="utf-8")
     print(f"wrote {args.report}")
     print(f"average score: {avg:.1f} / 100")
+
+    if args.verbose:
+        n = len(reports)
+        mean_ssim = sum(r.ssim for r in reports) / n
+        mean_phash_dist = sum(r.phash_dist for r in reports) / n
+        mean_phash_pct = sum(r.phash_pct for r in reports) / n
+        mean_header = sum(r.header_match for r in reports) / n
+        mean_notes = sum(r.notes_hdr_value for r in reports) / n
+        mean_aligned = sum(r.page_aligned_value for r in reports) / n
+        print("per-term means across all pages:")
+        print(f"  ssim          = {mean_ssim:.4f}")
+        print(f"  phash_dist    = {mean_phash_dist:.2f}")
+        print(f"  phash_pct     = {mean_phash_pct:.4f}")
+        print(f"  header_match  = {mean_header:.4f}")
+        print(f"  notes_hdr_hit = {mean_notes:.4f}  ({sum(r.notes_header_found for r in reports)}/{n})")
+        print(f"  page_aligned  = {mean_aligned:.4f}  ({sum(r.page_aligned for r in reports)}/{n})")
+        print("per-term weighted contributions to average score:")
+        print(f"  ssim         -> {_WEIGHT_SSIM * mean_ssim * 100:6.2f}")
+        print(f"  header       -> {_WEIGHT_HEADER * mean_header * 100:6.2f}")
+        print(f"  notes_hdr    -> {_WEIGHT_NOTES_HDR * mean_notes * 100:6.2f}")
+        print(f"  phash        -> {_WEIGHT_PHASH * mean_phash_pct * 100:6.2f}")
+        print(f"  page_aligned -> {_WEIGHT_PAGE_ALIGNED * mean_aligned * 100:6.2f}")
+        print(f"  TOTAL        -> {avg:6.2f}")
     return 0
 
 
