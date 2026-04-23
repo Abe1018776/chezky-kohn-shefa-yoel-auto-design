@@ -138,7 +138,29 @@ Any change must preserve these or the audit regresses visibly:
    visually partitioned.
 5. **8-zone page layout.** Header / cartouche / chapter-title / subtitle /
    body / 2-col notes / spillover / ornament — in that vertical order. Any
-   intermediate pass must not reorder these zones.
+   intermediate pass must not reorder these zones. Note: the VERTICAL BUDGET
+   for each zone is dynamic per page under the pair-keep pagination model
+   (see invariant 6); what stays fixed is the zone ORDER, not their heights.
+6. **Block pair-keep pagination (M2 round 4).** `python/convert.py` is the
+   pagination authority. It pre-computes per-block (body + fn + en) natural
+   heights from char counts and avg-line-heights (with a +15% safety
+   margin), accumulates them in reading order, and inserts `pagebreak()`
+   at block boundaries when the running page budget is met. Each page's
+   `page(margin: (bottom: Xmm))` is emitted with the bottom margin sized
+   to the cumulative notes height for that page's committed blocks. The
+   template does NOT compute margins — it just renders per convert.py's
+   per-page geometry. Pair-keep invariant: every note's rendered page
+   equals its source block's rendered page, unless the block's body alone
+   exceeds a full page budget (then body and notes both split, pair-keep
+   applied per body-segment). Two orphan-prevention rules: (a) a
+   chapter_title + its first body block are keep-next (never split); a
+   subtitle + its body block are keep-next; and (b) every body-bearing
+   non-opener page renders ≥ 3 body lines. Body TOP-y is stable (top
+   margin, unchanged); body BOTTOM-y varies per page by design. The
+   previous "fixed 75mm bottom margin on every page" approach from the
+   first M2 pass (969eebb) was reverted — it made VAL-M2-010's "identical
+   body position" hold trivially at the cost of wasting up to 75mm on
+   light-notes pages and producing more total pages than necessary.
 
 ---
 
