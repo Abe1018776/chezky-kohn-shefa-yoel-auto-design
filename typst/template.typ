@@ -71,6 +71,12 @@
 #let _chapter-num-state = state("chapter-num", 0)
 #let _folio-offset-state = state("folio-offset", 0)
 #let _on-opener-state = state("on-opener", false)
+// 1-based running index of the subtitle stream. Incremented in subtitle().
+// Used by the <subtitle-loc> metadata tag so validators can locate and
+// crop each subtitle strip via its actual render-position rather than a
+// fixed-Y ROI (opener-page cartouche + chapter_title zones shift the
+// subtitle's y-coordinate off the body-page default).
+#let _subtitle-count-state = state("subtitle-count", 0)
 
 // ------------------------------ Header -------------------------------------
 #let _make-header() = context {
@@ -191,12 +197,36 @@
 }
 
 // ------------------------------ Subtitle -----------------------------------
+// Emits a <plain-line> tag (used by build/book.plain.txt) AND a
+// <subtitle-loc> metadata tag carrying the subtitle's rendered position
+// (index_in_stream, page, x, y in pt). Validators MUST use this tag to
+// sample the actual subtitle strip — see .factory/library/user-testing.md
+// §"Subtitle sampling guidance". A fixed-Y ROI crop will land on the
+// centred cartouche on opener pages (1, 7, 12) because the subtitle
+// sits below the cartouche + chapter_title zones there.
+//
+// Defensive hardening: `#set par(justify: false)` inside the inner
+// block ensures that even if the outer document-scope justify rule
+// changes, or a subtitle ever wraps to 2+ lines, short single-line
+// subtitles remain right-anchored (i.e. their right edge hugs the
+// page right margin rather than drifting inward via justification).
 #let subtitle(s) = {
   _emit-plain("[SUBTITLE] " + _content-text(s))
+  _subtitle-count-state.update(c => c + 1)
   v(2mm)
   align(right)[
     #set text(font: font-body, size: 10.5pt, dir: rtl, lang: "he",
               fill: luma(45%), tracking: 0.08em)
+    #set par(justify: false)
+    #context {
+      let pos = here().position()
+      [#metadata((
+        index_in_stream: _subtitle-count-state.get(),
+        page: pos.page,
+        x_pt: pos.x.pt(),
+        y_pt: pos.y.pt(),
+      ))<subtitle-loc>]
+    }
     #s
   ]
   v(1mm)
