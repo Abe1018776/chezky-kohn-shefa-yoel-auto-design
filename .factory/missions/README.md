@@ -9,6 +9,22 @@ handoff (see `/README.md` → "Phase 2 gaps").
 | M2 | Full-width spillover zone | M1 | ~3–6h | ≥ 55 |
 | M3 | Winged-cherub end-of-chapter ornament | — (parallel to M1/M2) | ~1–2h | no regression |
 
+# Phase-3 Missions
+
+Close the last structural-fidelity gap (adaptive body-height) and a small
+remaining visual polish (true oval cartouche). Designed to land after M3.
+
+| ID | Mission | Depends on | Est. effort | Target |
+|----|---------|------------|-------------|--------|
+| M4 | Adaptive body-height layout (atomic-unit packing) | M2, M3 | ~8–16h | body-zone variance ≥ 30mm; audit Δ ≥ −1.0 vs M2 |
+| M5 | Oval cartouche curve | M4 | ~2–4h | ellipse aspect 2.5:1 ±10%; audit Δ ≥ −0.5 vs M4 |
+
+M4 is the core Phase-3 work — it replaces the fixed 75mm bottom margin
+with a per-page body/notes split computed from each page's notes volume,
+matching the reference book's adaptive body behaviour (`source_uploads/
+pagination_study.md` §1.4). M5 rides along as a visual polish that's
+trivial to ship once M4 is green.
+
 Each mission directory contains:
 
 - `mission.md` — goal, references, suggested approach

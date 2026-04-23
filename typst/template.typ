@@ -181,10 +181,16 @@
 #let _emit-plain(line) = [#metadata(line)<plain-line>]
 
 // ------------------------------ Chapter entry ------------------------------
+// NOTE: No pagebreak here. Under the M2 round-4 pair-keep pagination model,
+// python/convert.py is the pagination authority — it emits one
+// `#page(margin: (bottom: Xmm))[...]` block per logical page, so the
+// caller places chapter() directly at the top of each chapter-opener
+// page. A `weak` pagebreak inside chapter() would interact badly with the
+// #page(..)[body] wrapping (it could split the opener's subtitle+body
+// onto a stray blank page).
 #let chapter(label, title) = {
   _emit-plain("[CHAPTER] " + _content-text(label))
   _emit-plain("[CHAPTER_TITLE] " + _content-text(title))
-  pagebreak(weak: true)
   _chapter-state.update(label)
   _chapter-num-state.update(c => c + 1)
   _on-opener-state.update(true)
@@ -240,46 +246,56 @@
 //
 // M2 partition: the Python converter (python/convert.py) pre-splits each
 // block's fn / en stream into a column-fitting prefix and a spillover
-// remainder, and emits one of FOUR wrappers per note body:
+// remainder, and emits one of SIX wrappers per note body:
 //
-//   #fn-col[body]   → right column of the 2-col apparatus (מקור השפע)
-//   #en-col[body]   → left  column of the 2-col apparatus (צינור השפע)
-//   #fn-spill[body] → full-width spillover row, fn overflow portion
-//   #en-spill[body] → full-width spillover row, en overflow portion
+//   #fn-col[body]        → right column of the 2-col apparatus (מקור השפע)
+//   #en-col[body]        → left  column of the 2-col apparatus (צינור השפע)
+//   #fn-spill[body]      → full-width spillover row, fn overflow portion
+//   #en-spill[body]      → full-width spillover row, en overflow portion
+//   #fn-spill-cont[body] → marker-less tail of a split first fn note
+//   #en-spill-cont[body] → marker-less tail of a split first en note
 //
-// The `zone` tag ("col" or "spill") is read by `_apparatus()` below to
-// partition per-page notes into the 2-col grid and the spillover row.
-// The `stream` tag ("fn" or "en") is still used for per-stream per-
-// chapter marker numbering (VAL-M1-005 / M1-006 / M1-008) — markers are
-// indexed by (stream, chapter) regardless of zone, so a note that
-// overflows into the spillover still gets the next letter in its stream.
+// Each wrapper accepts a `src` named parameter carrying the source
+// JSON block index the note originated from. This is tagged in the
+// footnote metadata so VAL-M2-012 (block pair-keep invariant) can be
+// checked programmatically: every note's rendered page must equal its
+// source block's rendered page (save the body-exceeds-page escape).
 //
-// Chapter number comes from _chapter-num-state and is resolved at call time
-// via a context wrapper. A <plain-line> tag is also emitted at the call
-// site (i.e. in the body paragraph), carrying the note's plain text so the
-// Typst-side logical-order dump stays in sync with rendered content.
-#let fn-col(body) = {
+// The `zone` tag ("col" / "spill" / "spill-cont") is read by
+// `_apparatus()` below to partition per-page notes into the 2-col grid
+// and the spillover row. The `stream` tag ("fn" or "en") is used for
+// per-stream per-chapter marker numbering (VAL-M1-005 / M1-006 /
+// M1-008) — markers are indexed by (stream, chapter) regardless of
+// zone, so a note that overflows into the spillover still gets the
+// next letter in its stream.
+//
+// Chapter number comes from _chapter-num-state and is resolved at call
+// time via a context wrapper. A <plain-line> tag is also emitted at the
+// call site (i.e. in the body paragraph), carrying the note's plain
+// text so the Typst-side logical-order dump stays in sync with rendered
+// content.
+#let fn-col(body, src: 0) = {
   _emit-plain("[FN] " + _content-text(body))
   context {
-    footnote([#metadata(("fn", "col", _chapter-num-state.get())) #body])
+    footnote([#metadata(("fn", "col", _chapter-num-state.get(), src)) #body])
   }
 }
-#let en-col(body) = {
+#let en-col(body, src: 0) = {
   _emit-plain("[EN] " + _content-text(body))
   context {
-    footnote([#metadata(("en", "col", _chapter-num-state.get())) #body])
+    footnote([#metadata(("en", "col", _chapter-num-state.get(), src)) #body])
   }
 }
-#let fn-spill(body) = {
+#let fn-spill(body, src: 0) = {
   _emit-plain("[FN] " + _content-text(body))
   context {
-    footnote([#metadata(("fn", "spill", _chapter-num-state.get())) #body])
+    footnote([#metadata(("fn", "spill", _chapter-num-state.get(), src)) #body])
   }
 }
-#let en-spill(body) = {
+#let en-spill(body, src: 0) = {
   _emit-plain("[EN] " + _content-text(body))
   context {
-    footnote([#metadata(("en", "spill", _chapter-num-state.get())) #body])
+    footnote([#metadata(("en", "spill", _chapter-num-state.get(), src)) #body])
   }
 }
 
@@ -290,32 +306,39 @@
 // WITHOUT a marker (the head already carries the note's sole marker).
 // The counter helpers (_compute-labels, show-footnote) also treat
 // "spill-cont" as a non-incrementing entry so markers stay contiguous.
-#let fn-spill-cont(body) = {
+#let fn-spill-cont(body, src: 0) = {
   _emit-plain("[FN] " + _content-text(body))
   context {
-    footnote([#metadata(("fn", "spill-cont", _chapter-num-state.get())) #body])
+    footnote([#metadata(("fn", "spill-cont", _chapter-num-state.get(), src)) #body])
   }
 }
-#let en-spill-cont(body) = {
+#let en-spill-cont(body, src: 0) = {
   _emit-plain("[EN] " + _content-text(body))
   context {
-    footnote([#metadata(("en", "spill-cont", _chapter-num-state.get())) #body])
+    footnote([#metadata(("en", "spill-cont", _chapter-num-state.get(), src)) #body])
   }
 }
 
 // Back-compat shims: legacy M1 callers (probes, bare-template examples)
 // that emit #fn / #en still work, mapping to the column zone by default.
 // The generated book.typ from convert.py uses only the six new wrappers.
-#let fn(body) = fn-col(body)
-#let en(body) = en-col(body)
+#let fn(body, src: 0) = fn-col(body, src: src)
+#let en(body, src: 0) = en-col(body, src: src)
 
 // ------------------------------ Body wrapper -------------------------------
-#let body(content) = {
+// `src` names the source-JSON block index, used by VAL-M2-012 to match
+// each note to the body block it originated from. The body emits a
+// <body-loc> metadata tag (src + rendered page) so validators can
+// reconstruct "this body was on page P" per source block index.
+#let body(content, src: 0) = {
   // Emit the body-line BEFORE rendering so it appears before any nested
   // [FN]/[EN] plain-lines (which are emitted inline within content).
   _emit-plain("[BODY] " + _content-text(content))
   set par(justify: true, leading: 1.15em, first-line-indent: 0em)
   set text(font: font-body, size: 16pt, dir: rtl, lang: "he")
+  context {
+    [#metadata((src: src, page: here().page()))<body-loc>]
+  }
   content
 }
 
@@ -330,31 +353,34 @@
 }
 
 // ------------------------------ Notes apparatus helpers --------------------
-// Extract (stream, zone, chapter) tuple from a queried footnote element.
-// The body is a sequence whose first child is
-// `metadata((stream, zone, chapter))`.
+// Extract (stream, zone, chapter, src) tuple from a queried footnote
+// element. The body is a sequence whose first child is
+// `metadata((stream, zone, chapter, src))`.
 //
-// Backwards-compatible: if the metadata is a 2-tuple (legacy M1
-// emission), return (stream, "col", chapter) so a single implementation
-// can migrate in-place without breaking existing probes.
+// Backwards-compatible: if the metadata is a 3-tuple (legacy M2 round-1),
+// return (stream, zone, chapter, 0). If it's a 2-tuple (legacy M1),
+// return (stream, "col", chapter, 0).
 #let _note-meta(n) = {
   let c = n.body.children
   if c.len() > 0 and c.first().func() == metadata and type(c.first().value) == array {
     let v = c.first().value
-    if v.len() >= 3 {
-      (v.at(0), v.at(1), v.at(2))
+    if v.len() >= 4 {
+      (v.at(0), v.at(1), v.at(2), v.at(3))
+    } else if v.len() == 3 {
+      (v.at(0), v.at(1), v.at(2), 0)
     } else if v.len() == 2 {
-      (v.at(0), "col", v.at(1))
+      (v.at(0), "col", v.at(1), 0)
     } else {
-      ("fn", "col", 0)
+      ("fn", "col", 0, 0)
     }
   } else {
-    ("fn", "col", 0)
+    ("fn", "col", 0, 0)
   }
 }
 #let _stream-of(n)  = _note-meta(n).at(0)
 #let _zone-of(n)    = _note-meta(n).at(1)
 #let _chapter-of(n) = _note-meta(n).at(2)
+#let _src-of(n)     = _note-meta(n).at(3)
 
 // Extract plain-text body content (skipping metadata + leading space).
 // Walks the children tree recursively to accumulate any `text` leaves.
@@ -607,20 +633,21 @@
   body,
 ) = {
   set document(title: "Shefa Shlomo")
-  // Pre-reserve a 75mm bottom margin to house the 3-zone apparatus
-  // (2-col grid + full-width spillover). The value is fixed across ALL
-  // pages — not conditional on whether the page has spillover — so
-  // body-text position is identical whether or not spillover appears
-  // (VAL-M2-010). Matches the M1 baseline so the PDF page count stays
-  // at 15 (VAL-M2-005: page count ≤ baselines.m1.pdf_page_count = 15).
-  // Python's pre-partition (COL_CAPACITY_CHARS = 650 in convert.py)
-  // keeps the 2-col grid short enough to leave ~25–30mm of the bottom
-  // margin for the spillover row on heavy-note pages (block 48 fn id
-  // "22" ~1,551 chars, block 31 fn id "13" ~1,687 chars).
+  // M2 round-4 PAIR-KEEP PAGINATION: convert.py is the pagination
+  // authority. It emits per-page `#page(margin: (bottom: Xmm))[...]`
+  // blocks, where X is sized to the cumulative notes-zone height for
+  // that page's committed blocks. The default bottom margin below is
+  // only a fallback for any ambient content (e.g. the trailing
+  // metadata-dump `context {}` block) — every content-bearing page in
+  // a pair-keep build has an explicit per-page override. The previous
+  // "fixed 75mm on every page" value from M2 round-1 (commit 969eebb)
+  // was reverted because it wasted real estate on light-notes pages
+  // and forced more total pages than necessary. Body TOP-y stays at
+  // top-margin; body BOTTOM-y varies per page by design.
   set page(
     width: 170mm,
     height: 240mm,
-    margin: (top: 22mm, bottom: 75mm, inside: 25mm, outside: 20mm),
+    margin: (top: 22mm, bottom: 25mm, inside: 25mm, outside: 20mm),
     header: _make-header(),
     header-ascent: 8mm,
     footer: _apparatus(),
@@ -698,6 +725,7 @@
         zone: zn,
         chapter: ch,
         page: n.location().page(),
+        source_block_index: _src-of(n),
         index_in_stream: idx,
         marker: if is-cont { "" } else { "[" + hebrew-numeral(idx) + "]" },
         body_first_25chars: codepoints.slice(0, max).join(""),
