@@ -1,36 +1,83 @@
 {
-  "generated_page_count": 15,
+  "generated_page_count": 24,
   "reference_scan_count": 20,
-  "description": "Mapping from generated PDF page index (1..N, 1-indexed) to the reference_scans/page_*.png that is its semantic ground truth, or null if no suitable reference exists. See .factory/library/audit-alignment.md for the full derivation + regeneration procedure.",
+  "description": "Mapping from generated PDF page index (1..N, 1-indexed) to the reference_scans/page_*.png that is its semantic ground truth, or null if no suitable reference exists. Re-derived at M2-close under the clip-free pair-keep pagination build (24 physical pages = 21 logical + 3 notes-continuation pairs). See .factory/library/audit-alignment.md and .factory/library/pair-keep-baseline.md for the full derivation + regeneration procedure.",
   "derivation": {
+    "build_commit": "7b69c36",
+    "build_pdf_sha256": "14edbe0be391422d477020fb22b8e0c46951a0fbd3f9da6e891bfbe8c38324a9",
     "gen_chapter_ranges": {
-      "1": [1, 7],
-      "2": [8, 12],
-      "3": [13, 15]
+      "1": [
+        1,
+        11
+      ],
+      "2": [
+        12,
+        18
+      ],
+      "3": [
+        19,
+        24
+      ]
     },
     "ref_chapter_ranges": {
-      "1": ["page_105.png", "page_113.png"],
-      "2": ["page_114.png", "page_118.png"],
-      "3": ["page_119.png", "page_122.png"]
+      "1": [
+        "page_105.png",
+        "page_113.png"
+      ],
+      "2": [
+        "page_114.png",
+        "page_118.png"
+      ],
+      "3": [
+        "page_119.png",
+        "page_122.png"
+      ]
     },
-    "ref_backmatter_unmapped": ["page_123.png", "page_124.png"],
-    "notes": "At M1-close: ch2+ch3 use chapter-aware 1:1 pinning (opener→opener, ornament→ornament). Ch1 uses positional 1-to-1 (gen 1-7 → ref 105-111) because ch1 has 9 ref pages vs 7 gen pages, AND the M1 ornament is a placeholder '— ∞ —' string that visually doesn't match the winged-cherub glyph on ref 113. Re-derive chapter 1 to fully semantic (pinning gen 7 → ref 113) once M3 replaces the placeholder with the real ornament SVG; the cherub-to-cherub visual match is expected to lift gen-7's score and enable the full chapter-aware mapping without regression."
+    "ref_backmatter_unmapped": [
+      "page_123.png",
+      "page_124.png"
+    ],
+    "notes_continuation_pages": [
+      14,
+      17,
+      23
+    ],
+    "opener_pins": {
+      "1": "105",
+      "12": "114",
+      "19": "119"
+    },
+    "ornament_pins": {
+      "11": "113",
+      "18": "118",
+      "24": "122"
+    },
+    "notes": "M2-close pair-keep build renders 24 physical pages. Chapter opener pages (gen 1, 12, 19) are pinned to reference opener pages (105, 114, 119). End-of-chapter pages whose final block is an ornament (gen 11, 18, 24) are pinned to reference ornament pages (113, 118, 122). Notes-continuation pages (gen 14, 17, 23) are body-free apparatus-only pages emitted by Typst's native footnote engine when blocks 31, 35, and 48 respectively carry notes that exceed the per-page apparatus budget — the reference edition has no equivalent, so these map to null. Chapter 1 has 11 gen scoring pages vs 9 ref pages (105-113): refs 106 and 109 are double-booked to absorb the extra 2 gen pages while preserving opener+ornament pins. Chapter 3 has 5 gen scoring pages vs 4 ref (119-122): ref 120 is double-booked. Chapter 2 aligns 5→5 cleanly. This is a many-to-one allowed mapping (audit/image_diff.py permits multiple gen pages to reference the same ref scan). The M1 baseline recorded in validation-state.json before this re-derivation (80.1) was measured against a 15-page build produced under silent Typst footnote-clipping, which is no longer the code path; M2's pair-keep pagination builds clip-free and this alignment map reflects that reality."
   },
   "alignment": {
-    "1":  "page_105.png",
-    "2":  "page_106.png",
-    "3":  "page_107.png",
-    "4":  "page_108.png",
-    "5":  "page_109.png",
-    "6":  "page_110.png",
-    "7":  "page_111.png",
-    "8":  "page_114.png",
-    "9":  "page_115.png",
-    "10": "page_116.png",
-    "11": "page_117.png",
-    "12": "page_118.png",
-    "13": "page_119.png",
-    "14": "page_120.png",
-    "15": "page_122.png"
+    "1": "page_105.png",
+    "2": "page_106.png",
+    "3": "page_106.png",
+    "4": "page_107.png",
+    "5": "page_108.png",
+    "6": "page_109.png",
+    "7": "page_109.png",
+    "8": "page_110.png",
+    "9": "page_111.png",
+    "10": "page_112.png",
+    "11": "page_113.png",
+    "12": "page_114.png",
+    "13": "page_115.png",
+    "14": null,
+    "15": "page_116.png",
+    "16": "page_117.png",
+    "17": null,
+    "18": "page_118.png",
+    "19": "page_119.png",
+    "20": "page_120.png",
+    "21": "page_120.png",
+    "22": "page_121.png",
+    "23": null,
+    "24": "page_122.png"
   }
 }
