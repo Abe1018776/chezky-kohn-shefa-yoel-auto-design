@@ -1,0 +1,121 @@
+{
+  "groupId": "group-b",
+  "testedAt": "2026-04-22T23:59:00Z",
+  "surface": "build-artifacts",
+  "isolation": {
+    "sandboxRepo": "/home/factory-user/chezky-kohn-shefa-yoel-auto-design",
+    "hostRepo": "C:\\Users\\Main\\chezky-kohn-shefa-yoel-auto-design",
+    "missionDir": "C:\\Users\\Main\\.factory\\missions\\0e4c58ac-d782-472e-a3fd-a6ae036604cf",
+    "serialExecution": true,
+    "sourceEdits": false
+  },
+  "assertions": [
+    {
+      "id": "VAL-M1-003",
+      "status": "pass",
+      "reason": "Case-B pages were [1,2,4,5,9,10,11,14,15]. On every Case-B page: both_headers=true, baseline_delta_px=0, and measured gutter_mm ranged 8.04-8.47 (within 7-10mm).",
+      "evidence": [
+        "C:\\Users\\Main\\.factory\\missions\\0e4c58ac-d782-472e-a3fd-a6ae036604cf\\evidence\\m1-two-col-notes\\group-b\\group-b-case-layout.json"
+      ],
+      "toolsUsed": [
+        "shell",
+        "PIL",
+        "notes.json metadata"
+      ]
+    },
+    {
+      "id": "VAL-M1-004",
+      "status": "pass",
+      "reason": "Case-A pages were [3,6,8,13]. For each Case-A page: num_moqor_headers=1, num_tzinor_headers=0, and center_offset_mm was <= 0.11mm (within +/-3mm).",
+      "evidence": [
+        "C:\\Users\\Main\\.factory\\missions\\0e4c58ac-d782-472e-a3fd-a6ae036604cf\\evidence\\m1-two-col-notes\\group-b\\group-b-case-layout.json"
+      ],
+      "toolsUsed": [
+        "shell",
+        "PIL",
+        "notes.json metadata"
+      ]
+    },
+    {
+      "id": "VAL-M1-005",
+      "status": "fail",
+      "reason": "Only 1/9 Case-B pages had both first markers at the stream-start marker; 8/9 pages showed non-start markers on at least one side.",
+      "evidence": [
+        "C:\\Users\\Main\\.factory\\missions\\0e4c58ac-d782-472e-a3fd-a6ae036604cf\\evidence\\m1-two-col-notes\\group-b\\group-b-markers.json",
+        "C:\\Users\\Main\\.factory\\missions\\0e4c58ac-d782-472e-a3fd-a6ae036604cf\\evidence\\m1-two-col-notes\\group-b\\notes.json"
+      ],
+      "toolsUsed": [
+        "shell",
+        "Typst notes metadata"
+      ]
+    },
+    {
+      "id": "VAL-M1-006",
+      "status": "pass",
+      "reason": "Per-chapter first markers reset correctly for both streams. Chapters 1/2/3 first fn and first en markers each matched the chapter-start marker.",
+      "evidence": [
+        "C:\\Users\\Main\\.factory\\missions\\0e4c58ac-d782-472e-a3fd-a6ae036604cf\\evidence\\m1-two-col-notes\\group-b\\group-b-markers.json"
+      ],
+      "toolsUsed": [
+        "shell",
+        "Typst notes metadata",
+        "source JSON parse"
+      ]
+    },
+    {
+      "id": "VAL-M1-007",
+      "status": "pass",
+      "reason": "Per-page y-band checks showed notes_zone_y_range in the bottom region on all pages and body_below_notes=false for all 15 pages.",
+      "evidence": [
+        "C:\\Users\\Main\\.factory\\missions\\0e4c58ac-d782-472e-a3fd-a6ae036604cf\\evidence\\m1-two-col-notes\\group-b\\group-b-geometry-typography.json"
+      ],
+      "toolsUsed": [
+        "shell",
+        "PIL"
+      ]
+    },
+    {
+      "id": "VAL-M1-008",
+      "status": "pass",
+      "reason": "Chapter footnote counts were [11,6,7], so the 11th+ condition applied in chapter 1; observed 11th marker matched expected gematria marker.",
+      "evidence": [
+        "C:\\Users\\Main\\.factory\\missions\\0e4c58ac-d782-472e-a3fd-a6ae036604cf\\evidence\\m1-two-col-notes\\group-b\\group-b-markers.json"
+      ],
+      "toolsUsed": [
+        "shell",
+        "Typst notes metadata",
+        "source JSON parse"
+      ]
+    },
+    {
+      "id": "VAL-M1-009",
+      "status": "pass",
+      "reason": "Template check found notes font declaration with PFT_Vilna and render-stream size 9pt. Typography ratios on 6 sampled pages were all 0.5, below threshold 0.8696.",
+      "evidence": [
+        "C:\\Users\\Main\\.factory\\missions\\0e4c58ac-d782-472e-a3fd-a6ae036604cf\\evidence\\m1-two-col-notes\\group-b\\group-b-geometry-typography.json"
+      ],
+      "toolsUsed": [
+        "shell",
+        "PIL",
+        "template grep"
+      ]
+    }
+  ],
+  "frictions": [
+    {
+      "type": "tooling",
+      "description": "pypdf Hebrew RTL extraction did not reliably recover endnote prefixes for Case-B detection (pypdf_detected_case_b_pages=[]), so Case A/B classification and marker checks used Typst notes metadata (build/notes.json)."
+    },
+    {
+      "type": "env",
+      "description": "Delegated session denied destructive clean commands (rm -rf). Rebuild was completed with reversible moves to /tmp/factory-trash before regenerating artifacts."
+    }
+  ],
+  "blockers": [],
+  "toolsUsed": [
+    "shell",
+    "pypdf",
+    "PIL",
+    "Typst notes metadata"
+  ]
+}

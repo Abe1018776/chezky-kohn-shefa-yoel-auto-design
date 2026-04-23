@@ -1,0 +1,109 @@
+{
+  "groupId": "group-a",
+  "testedAt": "2026-04-22T23:38:13.614263+00:00",
+  "surface": "build-artifacts",
+  "isolation": {
+    "sandboxRepo": "/home/factory-user/chezky-kohn-shefa-yoel-auto-design",
+    "hostRepo": "C:\\Users\\Main\\chezky-kohn-shefa-yoel-auto-design",
+    "missionDir": "C:\\Users\\Main\\.factory\\missions\\0e4c58ac-d782-472e-a3fd-a6ae036604cf",
+    "serialExecution": true,
+    "sourceEdits": false
+  },
+  "assertions": [
+    {
+      "id": "VAL-M1-001",
+      "status": "pass",
+      "reason": "Clean rebuild succeeded (convert/pdf/png exit code 0), warnings scan found no warning lines, and artifacts are non-empty (book.pdf=172024 bytes, page-01.png=416574 bytes). Font fallback/silencing is committed in typst/template.typ via explicit font stacks.",
+      "evidence": [
+        "C:\\Users\\Main\\.factory\\missions\\0e4c58ac-d782-472e-a3fd-a6ae036604cf\\evidence\\m1-two-col-notes\\group-a\\evidence-convert.stdout",
+        "C:\\Users\\Main\\.factory\\missions\\0e4c58ac-d782-472e-a3fd-a6ae036604cf\\evidence\\m1-two-col-notes\\group-a\\evidence-convert.stderr",
+        "C:\\Users\\Main\\.factory\\missions\\0e4c58ac-d782-472e-a3fd-a6ae036604cf\\evidence\\m1-two-col-notes\\group-a\\evidence-build-pdf.stdout",
+        "C:\\Users\\Main\\.factory\\missions\\0e4c58ac-d782-472e-a3fd-a6ae036604cf\\evidence\\m1-two-col-notes\\group-a\\evidence-build-pdf.stderr",
+        "C:\\Users\\Main\\.factory\\missions\\0e4c58ac-d782-472e-a3fd-a6ae036604cf\\evidence\\m1-two-col-notes\\group-a\\evidence-build-png.stdout",
+        "C:\\Users\\Main\\.factory\\missions\\0e4c58ac-d782-472e-a3fd-a6ae036604cf\\evidence\\m1-two-col-notes\\group-a\\evidence-build-png.stderr",
+        "C:\\Users\\Main\\.factory\\missions\\0e4c58ac-d782-472e-a3fd-a6ae036604cf\\evidence\\m1-two-col-notes\\group-a\\val-m1-001-summary.txt"
+      ],
+      "toolsUsed": [
+        "shell"
+      ]
+    },
+    {
+      "id": "VAL-M1-002",
+      "status": "pass",
+      "reason": "34/34 notes were verified exactly once using Typst plaintext fallback (book.plain.txt). pypdf Hebrew extraction was unreliable (0/34), fallback counts are all 1/34 with per-note witness rows.",
+      "evidence": [
+        "C:\\Users\\Main\\.factory\\missions\\0e4c58ac-d782-472e-a3fd-a6ae036604cf\\evidence\\m1-two-col-notes\\group-a\\assertion-metrics-v2.json"
+      ],
+      "toolsUsed": [
+        "pypdf",
+        "shell",
+        "typst-query-plain-text"
+      ]
+    },
+    {
+      "id": "VAL-M1-010",
+      "status": "pass",
+      "reason": "PDF page count is 15, which is inside the required [15, 24] range.",
+      "evidence": [
+        "C:\\Users\\Main\\.factory\\missions\\0e4c58ac-d782-472e-a3fd-a6ae036604cf\\evidence\\m1-two-col-notes\\group-a\\assertion-metrics-v2.json"
+      ],
+      "toolsUsed": [
+        "pypdf"
+      ]
+    },
+    {
+      "id": "VAL-M1-011",
+      "status": "pass",
+      "reason": "Audit average score is 48.8 (>=48.0), and VAL-M1-002 passes on the same measured build.",
+      "evidence": [
+        "C:\\Users\\Main\\.factory\\missions\\0e4c58ac-d782-472e-a3fd-a6ae036604cf\\evidence\\m1-two-col-notes\\group-a\\audit_report.md",
+        "C:\\Users\\Main\\.factory\\missions\\0e4c58ac-d782-472e-a3fd-a6ae036604cf\\evidence\\m1-two-col-notes\\group-a\\evidence-audit.stdout",
+        "C:\\Users\\Main\\.factory\\missions\\0e4c58ac-d782-472e-a3fd-a6ae036604cf\\evidence\\m1-two-col-notes\\group-a\\assertion-metrics-v2.json"
+      ],
+      "toolsUsed": [
+        "shell",
+        "pypdf"
+      ]
+    },
+    {
+      "id": "VAL-M1-012",
+      "status": "pass",
+      "reason": "Determinism check after clearing Typst cache before each run produced run1=e53196d98f03c3ed5a7643ecbd1735a495562123d17a0ad6ab6f7cbb961ade1a and run2=e53196d98f03c3ed5a7643ecbd1735a495562123d17a0ad6ab6f7cbb961ade1a; deterministic=true.",
+      "evidence": [
+        "C:\\Users\\Main\\.factory\\missions\\0e4c58ac-d782-472e-a3fd-a6ae036604cf\\evidence\\m1-two-col-notes\\group-a\\val-m1-012-determinism.txt"
+      ],
+      "toolsUsed": [
+        "shell"
+      ]
+    },
+    {
+      "id": "VAL-M1-013",
+      "status": "pass",
+      "reason": "Per-block marker→body order checks passed for 21/21 blocks with refs using Typst plaintext fallback grouping ([BODY]/[FN]/[EN]) and source ref-order comparison.",
+      "evidence": [
+        "C:\\Users\\Main\\.factory\\missions\\0e4c58ac-d782-472e-a3fd-a6ae036604cf\\evidence\\m1-two-col-notes\\group-a\\assertion-metrics-v2.json"
+      ],
+      "toolsUsed": [
+        "shell",
+        "pypdf",
+        "typst-query-plain-text"
+      ]
+    }
+  ],
+  "frictions": [
+    {
+      "type": "tooling",
+      "description": "pypdf extraction on Hebrew text was unreliable for exact note-body matching (all pypdf witness counts were 0), so VAL-M1-002 and VAL-M1-013 were validated via Typst-side build/book.plain.txt fallback as allowed by AGENTS/user-testing guidance."
+    },
+    {
+      "type": "env",
+      "description": "A destructive-cache-clear attempt was auto-denied in delegated mode; determinism was validated with a reversible approach by moving prior build/cache directories into /tmp before each run."
+    }
+  ],
+  "blockers": [],
+  "toolsUsed": [
+    "shell",
+    "pypdf",
+    "typst-query"
+  ]
+}

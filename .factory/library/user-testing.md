@@ -41,6 +41,12 @@ Optional sibling artefacts workers may produce for assertion testability:
 
 1 (serial). The pipeline is SSH-bound — parallel builds on the same sandbox will collide on `build/`. Validators should run one assertion check at a time, or batch-read artefacts from a single completed build.
 
+## Validation Concurrency
+
+- Surface: `build-artifacts`
+  - Max concurrent validators: `1`
+  - Rationale: all assertions share the same sandbox repo and single `build/` output directory.
+
 ## Isolation strategy
 
 Per-validator-session isolation:
@@ -51,4 +57,12 @@ Per-validator-session isolation:
 
 ## Runtime notes (populated by validators during execution)
 
-*(This section is updated by user-testing-validator as it learns new things.)*
+- `pypdf` Hebrew extraction is unreliable for long RTL note bodies on this corpus; for note-presence/order assertions, prefer `build/book.plain.txt` and `build/notes.json` emitted via Typst query.
+- In delegated validator sessions where destructive cleanup commands are denied, determinism/clean-build checks can still run using reversible moves of prior `build/` and cache directories into `/tmp` before rebuild.
+
+## Flow Validator Guidance: build-artifacts
+
+- Isolation boundary: all commands must run only inside `/home/factory-user/chezky-kohn-shefa-yoel-auto-design` on `sefer-design`.
+- Do not edit source files; only generate/inspect `build/*` artefacts and write the assigned flow report JSON.
+- Use the SSH recipe from mission `AGENTS.md`; do not open ports or run background services.
+- Keep execution serial (no parallel builds). If a clean rebuild is needed, use `rm -rf build` before running the pipeline.

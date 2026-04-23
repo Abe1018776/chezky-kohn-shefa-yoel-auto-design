@@ -1,0 +1,71 @@
+{
+  "groupId": "group-c",
+  "testedAt": "2026-04-23T00:10:00Z",
+  "surface": "build-artifacts",
+  "isolation": {
+    "sandboxRepo": "/home/factory-user/chezky-kohn-shefa-yoel-auto-design",
+    "hostRepo": "C:\\Users\\Main\\chezky-kohn-shefa-yoel-auto-design",
+    "missionDir": "C:\\Users\\Main\\.factory\\missions\\0e4c58ac-d782-472e-a3fd-a6ae036604cf",
+    "serialExecution": true,
+    "sourceEdits": false
+  },
+  "assertions": [
+    {
+      "id": "VAL-M1-014",
+      "status": "fail",
+      "reason": "Luma and size checks on sampled chapter-opener pages (1,7,12) passed (subtitle luma +57.6% to +74.7% vs body; subtitle median component height 10px vs body 11.5-17px), but subtitle right-alignment check failed on all samples (right-edge gap 318-339px from page right edge).",
+      "evidence": [
+        "C:\\Users\\Main\\.factory\\missions\\0e4c58ac-d782-472e-a3fd-a6ae036604cf\\evidence\\m1-two-col-notes\\group-c\\group-c-metrics.json",
+        "C:\\Users\\Main\\.factory\\missions\\0e4c58ac-d782-472e-a3fd-a6ae036604cf\\evidence\\m1-two-col-notes\\group-c\\group-c-evidence\\val-m1-014-page-01-subtitle.png",
+        "C:\\Users\\Main\\.factory\\missions\\0e4c58ac-d782-472e-a3fd-a6ae036604cf\\evidence\\m1-two-col-notes\\group-c\\group-c-evidence\\val-m1-014-page-07-subtitle.png",
+        "C:\\Users\\Main\\.factory\\missions\\0e4c58ac-d782-472e-a3fd-a6ae036604cf\\evidence\\m1-two-col-notes\\group-c\\group-c-evidence\\val-m1-014-page-12-subtitle.png"
+      ],
+      "toolsUsed": [
+        "shell",
+        "PIL",
+        "pypdf"
+      ]
+    },
+    {
+      "id": "VAL-M1-015",
+      "status": "pass",
+      "reason": "All 15 rendered pages matched expected gematria folio sequence starting at 77 (עז): page 1..15 observed exactly [עז, עח, עט, פ, פא, פב, פג, פד, פה, פו, פז, פח, פט, צ, צא].",
+      "evidence": [
+        "C:\\Users\\Main\\.factory\\missions\\0e4c58ac-d782-472e-a3fd-a6ae036604cf\\evidence\\m1-two-col-notes\\group-c\\group-c-metrics.json",
+        "C:\\Users\\Main\\.factory\\missions\\0e4c58ac-d782-472e-a3fd-a6ae036604cf\\evidence\\m1-two-col-notes\\group-c\\group-c-evidence\\val-m1-015-folio-page-01.png",
+        "C:\\Users\\Main\\.factory\\missions\\0e4c58ac-d782-472e-a3fd-a6ae036604cf\\evidence\\m1-two-col-notes\\group-c\\group-c-evidence\\val-m1-015-folio-page-15.png"
+      ],
+      "toolsUsed": [
+        "shell",
+        "pypdf",
+        "PIL"
+      ]
+    },
+    {
+      "id": "VAL-CROSS-010",
+      "status": "pass",
+      "reason": "Condition (a) failed (generated=15 vs reference=20), but condition (b) passed: committed audit/alignment.json exists with 15 mappings, audit/image_diff.py loads and applies --alignment, and every generated page used the mapped reference in audit_report.md (15/15 honored).",
+      "evidence": [
+        "C:\\Users\\Main\\.factory\\missions\\0e4c58ac-d782-472e-a3fd-a6ae036604cf\\evidence\\m1-two-col-notes\\group-c\\group-c-metrics.json",
+        "C:\\Users\\Main\\.factory\\missions\\0e4c58ac-d782-472e-a3fd-a6ae036604cf\\evidence\\m1-two-col-notes\\group-c\\audit_report.md",
+        "C:\\Users\\Main\\.factory\\missions\\0e4c58ac-d782-472e-a3fd-a6ae036604cf\\evidence\\m1-two-col-notes\\group-c\\group-c-audit.stdout"
+      ],
+      "toolsUsed": [
+        "shell",
+        "pypdf"
+      ]
+    }
+  ],
+  "frictions": [
+    {
+      "type": "tooling",
+      "description": "Hebrew pypdf extraction is RTL-reordered for body/subtitle strings; folio extraction used stable header-anchor regex (שלמה<folio>) and visual folio crops for evidence."
+    }
+  ],
+  "blockers": [],
+  "toolsUsed": [
+    "shell",
+    "pypdf",
+    "PIL"
+  ]
+}
