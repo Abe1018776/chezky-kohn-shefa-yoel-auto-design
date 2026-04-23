@@ -1,27 +1,22 @@
 {
   "milestone": "m1-two-col-notes",
-  "round": 2,
-  "status": "fail",
+  "round": 3,
+  "status": "pass",
   "assertionsSummary": {
-    "total": 2,
+    "total": 1,
     "passed": 1,
-    "failed": 1,
+    "failed": 0,
     "blocked": 0
   },
   "passedAssertions": [
-    "VAL-M1-014"
+    "VAL-M1-005"
   ],
-  "failedAssertions": [
-    {
-      "id": "VAL-M1-005",
-      "reason": "Per-stream per-chapter marker sequences are strictly monotonic and reset at chapter boundaries, but chapter-first Case-B boundary requirement (both [א]) fails: chapter 2 page 9: right=[ב] left=[א]; chapter 3 page 14: right=[ה] left=[א]"
-    }
-  ],
+  "failedAssertions": [],
   "blockedAssertions": [],
   "appliedUpdates": [],
-  "previousRound": ".factory/validation/m1-two-col-notes/user-testing/synthesis.round1.json",
+  "previousRound": ".factory/validation/m1-two-col-notes/user-testing/synthesis.round2.json",
   "flowReports": [
-    "C:/Users/Main/chezky-kohn-shefa-yoel-auto-design/.factory/validation/m1-two-col-notes/user-testing/flows/rerun-m1-005-014.json"
+    "C:/Users/Main/chezky-kohn-shefa-yoel-auto-design/.factory/validation/m1-two-col-notes/user-testing/flows/rerun-m1-005-round3.json"
   ],
-  "generatedAt": "2026-04-23T00:44:36.056556+00:00"
+  "generatedAt": "2026-04-23T00:53:41.187998+00:00"
 }

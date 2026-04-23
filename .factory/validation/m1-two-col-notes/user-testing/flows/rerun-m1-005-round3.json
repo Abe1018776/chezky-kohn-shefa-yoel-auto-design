@@ -1,0 +1,111 @@
+{
+  "milestone": "m1-two-col-notes",
+  "groupId": "rerun-m1-005-round3",
+  "isolation": {
+    "surface": "build-artifacts",
+    "sandboxPath": "/home/factory-user/chezky-kohn-shefa-yoel-auto-design",
+    "missionDir": "C:\\Users\\Main\\.factory\\missions\\0e4c58ac-d782-472e-a3fd-a6ae036604cf"
+  },
+  "assertions": [
+    {
+      "id": "VAL-M1-005",
+      "title": "Two streams use independent Hebrew-letter counters",
+      "status": "pass",
+      "evidence": [
+        "C:\\Users\\Main\\.factory\\missions\\0e4c58ac-d782-472e-a3fd-a6ae036604cf\\evidence\\m1-two-col-notes\\rerun-m1-005-round3\\notes.json",
+        "C:\\Users\\Main\\.factory\\missions\\0e4c58ac-d782-472e-a3fd-a6ae036604cf\\evidence\\m1-two-col-notes\\rerun-m1-005-round3\\marker-sequence-analysis.json",
+        "C:\\Users\\Main\\.factory\\missions\\0e4c58ac-d782-472e-a3fd-a6ae036604cf\\evidence\\m1-two-col-notes\\rerun-m1-005-round3\\sandbox-build-stats.json"
+      ],
+      "evidenceTables": {
+        "fn_markers_in_order": [
+          {
+            "chapter": 1,
+            "fn_markers_in_order": [
+              "[א]",
+              "[ב]",
+              "[ג]",
+              "[ד]",
+              "[ה]",
+              "[ו]",
+              "[ז]",
+              "[ח]",
+              "[ט]",
+              "[י]",
+              "[יא]"
+            ]
+          },
+          {
+            "chapter": 2,
+            "fn_markers_in_order": [
+              "[א]",
+              "[ב]",
+              "[ג]",
+              "[ד]",
+              "[ה]",
+              "[ו]"
+            ]
+          },
+          {
+            "chapter": 3,
+            "fn_markers_in_order": [
+              "[א]",
+              "[ב]",
+              "[ג]",
+              "[ד]",
+              "[ה]",
+              "[ו]",
+              "[ז]"
+            ]
+          }
+        ],
+        "en_markers_in_order": [
+          {
+            "chapter": 1,
+            "en_markers_in_order": [
+              "[א]",
+              "[ב]",
+              "[ג]",
+              "[ד]"
+            ]
+          },
+          {
+            "chapter": 2,
+            "en_markers_in_order": [
+              "[א]",
+              "[ב]",
+              "[ג]",
+              "[ד]"
+            ]
+          },
+          {
+            "chapter": 3,
+            "en_markers_in_order": [
+              "[א]",
+              "[ב]"
+            ]
+          }
+        ]
+      },
+      "reason": "Updated VAL-M1-005 interpretation applied: only independent per-stream per-chapter monotonic sequences were checked. For each chapter, fn markers and en markers each start at [א] and increase without gaps/duplicates in rendered order. No cross-stream/page-level Case-B boundary constraint was tested or enforced.",
+      "issues": null
+    }
+  ],
+  "toolsUsed": [
+    "shell",
+    "python3",
+    "Typst query metadata (notes-meta)"
+  ],
+  "frictions": [],
+  "blockers": [],
+  "artifacts": [
+    "build/book.typ",
+    "build/book.pdf",
+    "build/page-{n}.png",
+    "build/notes.json",
+    "C:\\Users\\Main\\.factory\\missions\\0e4c58ac-d782-472e-a3fd-a6ae036604cf\\evidence\\m1-two-col-notes\\rerun-m1-005-round3\\notes.json",
+    "C:\\Users\\Main\\.factory\\missions\\0e4c58ac-d782-472e-a3fd-a6ae036604cf\\evidence\\m1-two-col-notes\\rerun-m1-005-round3\\marker-sequence-analysis.json",
+    "C:\\Users\\Main\\.factory\\missions\\0e4c58ac-d782-472e-a3fd-a6ae036604cf\\evidence\\m1-two-col-notes\\rerun-m1-005-round3\\sandbox-build-stats.json"
+  ],
+  "generatedAt": "2026-04-23T00:51:53.978981+00:00",
+  "summary": "VAL-M1-005 rerun result: pass. Checked only independent per-stream per-chapter marker monotonicity per updated contract text."
+}
