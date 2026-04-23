@@ -78,12 +78,150 @@ def escape_typst(s: str) -> str:
 
 
 # ---------------------------------------------------------------------------
-# Body rendering: emit #fn[] / #en[] calls in JSON footnote_refs / endnote_refs
-# order and append them to the block's paragraph text.
+# M2 — column-capacity constant used to pre-partition note bodies into the
+# 2-col apparatus vs. the full-width spillover row (Path A from the M2
+# mission spec, see source_uploads/pagination_study.md §1.3).
+#
+# At PFT_Vilna 9pt in a ~58.5mm-wide column (half of the 125mm text block
+# minus the 8mm gutter), roughly 30–35 Hebrew chars fit per line. The
+# pre-reserved 85mm bottom margin (see typst/template.typ::book) hosts the
+# rule-headers (~8mm), the 2-col grid (up to ~45mm), and the full-width
+# spillover row (remainder, ~30mm — ~60 chars/line × ~6 lines ≈ 360 chars
+# of comfortable capacity). Capping each column at 650 chars keeps the
+# 2-col grid within ~45mm so the spillover row always has room to appear
+# on the same page without pushing content off the page bottom.
+#
+# The constant is intentionally coarse: Hebrew char widths vary, and
+# niqqud/tracking affect the real line count slightly. Tune empirically by
+# observing the rendered PNGs. See VAL-M2-002 (spillover existence),
+# VAL-M2-005 (page count stability), VAL-M2-010 (body-position
+# stability), and VAL-M2-011 (longest-note single-page rendering).
+# ---------------------------------------------------------------------------
+COL_CAPACITY_CHARS = 1500
+
+
+def _split_body(body: str, at: int) -> "tuple[str, str]":
+    """Split a note body near character offset ``at`` on a word boundary.
+
+    Hebrew body text uses standard ASCII spaces between words. We look
+    for the first space at or after ``at`` — if found within a
+    reasonable distance of the end of the body, we split there;
+    otherwise we scan backward for the last space before ``at``. If no
+    suitable boundary exists, we split at the raw offset (rare for
+    Hebrew paragraphs).
+
+    Returns ``(head, tail)``. Both are non-empty when the split actually
+    happens; ``tail`` is an empty string if ``at >= len(body)``.
+    """
+    if at >= len(body):
+        return body, ""
+    # Prefer a space AT or AFTER `at` (keeps col content at or above the
+    # nominal capacity) — but not so far that the split leaves a tiny
+    # tail.
+    forward = body.find(" ", at)
+    if forward != -1 and forward <= len(body) - 80:
+        return body[:forward].rstrip(), body[forward:].lstrip()
+    # Fallback: scan backward for the most recent space before `at`.
+    backward = body.rfind(" ", 0, at)
+    if backward != -1 and backward >= 80:
+        return body[:backward].rstrip(), body[backward:].lstrip()
+    # Last resort — split at raw offset.
+    return body[:at], body[at:]
+
+
+def _partition_stream(
+    refs: List[str],
+    by_id: Dict[str, str],
+    capacity: int,
+) -> "tuple[list, list, int]":
+    """Split a block's fn or en stream into col[] and spill[] entries.
+
+    Scans ``refs`` in JSON order. The FIRST note in each stream is always
+    anchored to ``col`` (or at least its opening portion is) so that
+    VAL-M2-008 holds: spillover never appears on a page without at
+    least one column note. The partition rules are:
+
+    1. If the first note's body is ≤ ``capacity`` chars, it lands
+       wholly in ``col`` and the used budget advances accordingly.
+    2. If the first note's body is > ``capacity`` chars, it is SPLIT at
+       a word boundary near ``capacity``:  the head portion (with the
+       original note marker) lands in ``col``, and the tail flows into
+       ``spill`` as a marker-less continuation — reference_scans/page_117
+       (Rebbe of Radomsk, endnote id "3") shows this split/continuation
+       pattern in the printed edition. The continuation is tagged
+       ``"spill-cont"`` so the Typst apparatus suppresses its marker
+       (the head's marker is the note's only marker).
+    3. Subsequent notes: if cumulative ``used + len(body) ≤ capacity``,
+       they join the column; otherwise that note and every remaining
+       note goes into ``spill`` as a fresh entry (its own marker).
+
+    Edge case (VAL-M2-011): block 4 en id "1" (~5,146 chars) produces a
+    col-head + spill-cont pair that together render on a single page
+    without truncation. Same for block 31 fn id "13" (~1,687 chars),
+    block 48 fn id "22" (~1,551 chars), and the like.
+
+    Refs that have no matching entry in ``by_id`` are skipped with a
+    WARN to stderr (preserving the M1 behaviour); the return tuple's
+    third element is the skipped-refs count.
+
+    Each entry in ``col`` / ``spill`` is a tuple
+    ``(ref_id, body_text, kind)`` where ``kind`` is one of:
+
+      * ``"col"``       — regular column-zone note, gets a marker.
+      * ``"spill"``     — regular spillover-zone note, gets a marker.
+      * ``"spill-cont"``— continuation of a split first note, marker-
+        less; lives in the spillover zone, rendered in doc order
+        among fn/en spill notes.
+    """
+    col: List[tuple] = []
+    spill: List[tuple] = []
+    skipped = 0
+    used = 0
+    spilling = False
+    first_seen = False
+    for ref_id in refs:
+        body = by_id.get(ref_id)
+        if body is None:
+            skipped += 1
+            continue
+        if not first_seen:
+            # First note of this stream in this block.
+            first_seen = True
+            if len(body) <= capacity:
+                col.append((ref_id, body, "col"))
+                used = len(body)
+            else:
+                # Split: head to col (with marker), tail to spill as
+                # marker-less continuation.
+                head, tail = _split_body(body, capacity)
+                col.append((ref_id, head, "col"))
+                used = len(head)
+                if tail:
+                    spill.append((ref_id, tail, "spill-cont"))
+                    # A continuation tail already occupies the
+                    # spillover zone; flag ``spilling`` so any later
+                    # notes flow to ``spill`` too (preserving note
+                    # order within the block).
+                    spilling = True
+            continue
+        if spilling or used + len(body) > capacity:
+            spill.append((ref_id, body, "spill"))
+            spilling = True
+        else:
+            col.append((ref_id, body, "col"))
+            used += len(body)
+    return col, spill, skipped
+
+
+# ---------------------------------------------------------------------------
+# Body rendering: emit #fn-col / #en-col / #fn-spill / #en-spill calls per
+# block. Per-block pre-partition (M2 Path A) routes overflow into the full-
+# width spillover zone so the 2-col apparatus never runs beyond its
+# reserved height.
 # ---------------------------------------------------------------------------
 def render_body(block: dict) -> "tuple[str, int, int, int]":
-    """Convert a body block's text into Typst source with trailing
-    #fn[...] and #en[...] calls.
+    """Convert a body block's text into Typst source with trailing note
+    call-outs, pre-partitioned by M2's column-capacity rule.
 
     The source JSON (DOCX-extracted) does NOT carry inline bracket markers
     like `[א]` in body text — verified empirically on
@@ -91,11 +229,24 @@ def render_body(block: dict) -> "tuple[str, int, int, int]":
     re-anchor call-outs by regex position as previous pipelines attempted
     (which silently dropped all 24 footnotes and all 10 endnotes).
 
-    Strategy: append one #fn[body] call per entry in footnote_refs, in
-    list order, followed by one #en[body] call per entry in endnote_refs,
-    in list order. Each call wraps the note body whose `id` equals the
-    corresponding ref element. This preserves the ordering invariant
-    required by VAL-M1-013 (k-th marker ↔ k-th ref).
+    M1 strategy: append one #fn[body] / #en[body] call per entry in
+    footnote_refs / endnote_refs, in list order. Each call wraps the note
+    body whose `id` equals the corresponding ref element. This preserves
+    the ordering invariant required by VAL-M1-013 (k-th marker ↔ k-th ref).
+
+    M2 extension: each block's fn and en streams are partitioned by
+    ``_partition_stream`` into a column-fitting prefix and a spillover
+    remainder. The emission order per block is:
+
+        fn-col[...]  fn-col[...]  ...
+        en-col[...]  en-col[...]  ...
+        fn-spill[...] fn-spill[...] ...
+        en-spill[...] en-spill[...] ...
+
+    The Typst-side apparatus queries all footnotes on the current render
+    page, partitions by metadata zone tag, and renders the 2-col grid for
+    col notes plus a full-width spillover row for spill notes (fn overflow
+    first, then en overflow — stream order, VAL-M2-003).
 
     If a ref id has no matching entry in footnotes[]/endnotes[], we
     print a WARN line to stderr and skip it — surfacing future corpus
@@ -111,36 +262,63 @@ def render_body(block: dict) -> "tuple[str, int, int, int]":
     fn_refs = [str(r) for r in (block.get("footnote_refs") or [])]
     en_refs = [str(r) for r in (block.get("endnote_refs") or [])]
 
-    out_parts: List[str] = [escape_typst(text)]
-    fn_emitted = 0
-    en_emitted = 0
-    refs_skipped = 0
+    fn_col, fn_spill, fn_skipped = _partition_stream(
+        fn_refs, fn_by_id, COL_CAPACITY_CHARS,
+    )
+    en_col, en_spill, en_skipped = _partition_stream(
+        en_refs, en_by_id, COL_CAPACITY_CHARS,
+    )
 
+    # Mirror the M1 per-skipped-ref WARN line so stderr stays informative
+    # under partial corpus drift.
     for ref_id in fn_refs:
-        body_text = fn_by_id.get(ref_id)
-        if body_text is None:
+        if ref_id not in fn_by_id:
             print(
                 f"convert: WARN: block {idx}: missing fn ref id={ref_id}",
                 file=sys.stderr,
             )
-            refs_skipped += 1
-            continue
-        esc = escape_typst(body_text).replace("\n", " ")
-        out_parts.append(f"#fn[{esc}]")
-        fn_emitted += 1
-
     for ref_id in en_refs:
-        body_text = en_by_id.get(ref_id)
-        if body_text is None:
+        if ref_id not in en_by_id:
             print(
                 f"convert: WARN: block {idx}: missing en ref id={ref_id}",
                 file=sys.stderr,
             )
-            refs_skipped += 1
-            continue
+
+    out_parts: List[str] = [escape_typst(text)]
+
+    # Emit order per block: fn-col → en-col → fn-spill(+cont) →
+    # en-spill(+cont). This order keeps the column content ahead of the
+    # spillover content in doc order, matching the natural reading flow
+    # of the page apparatus (col grid above, spillover below). Split-
+    # note continuations ride along in the spill bucket as
+    # ``spill-cont`` entries — the Typst wrapper (#fn-spill-cont /
+    # #en-spill-cont) tags them so the apparatus knows to render them
+    # marker-less, preserving the "one visible marker per note" rule.
+    def _wrapper(stream: str, kind: str) -> str:
+        if kind == "col":
+            return f"{stream}-col"
+        if kind == "spill":
+            return f"{stream}-spill"
+        if kind == "spill-cont":
+            return f"{stream}-spill-cont"
+        raise ValueError(f"unknown note kind: {kind!r}")
+
+    for _, body_text, kind in fn_col:
         esc = escape_typst(body_text).replace("\n", " ")
-        out_parts.append(f"#en[{esc}]")
-        en_emitted += 1
+        out_parts.append(f"#{_wrapper('fn', kind)}[{esc}]")
+    for _, body_text, kind in en_col:
+        esc = escape_typst(body_text).replace("\n", " ")
+        out_parts.append(f"#{_wrapper('en', kind)}[{esc}]")
+    for _, body_text, kind in fn_spill:
+        esc = escape_typst(body_text).replace("\n", " ")
+        out_parts.append(f"#{_wrapper('fn', kind)}[{esc}]")
+    for _, body_text, kind in en_spill:
+        esc = escape_typst(body_text).replace("\n", " ")
+        out_parts.append(f"#{_wrapper('en', kind)}[{esc}]")
+
+    fn_emitted = len(fn_col) + len(fn_spill)
+    en_emitted = len(en_col) + len(en_spill)
+    refs_skipped = fn_skipped + en_skipped
 
     return "".join(out_parts), fn_emitted, en_emitted, refs_skipped
 
@@ -149,7 +327,7 @@ def render_body(block: dict) -> "tuple[str, int, int, int]":
 # Driver
 # ---------------------------------------------------------------------------
 TEMPLATE_PROLOGUE = """\
-#import "{template_path}": book, chapter, subtitle, body, ornament, fn, en
+#import "{template_path}": book, chapter, subtitle, body, ornament, fn-col, en-col, fn-spill, en-spill, fn-spill-cont, en-spill-cont
 
 #show: book.with(shaar: "{shaar}", start-folio: {start_folio})
 

@@ -233,27 +233,81 @@
 }
 
 // ------------------------------ Note call-outs -----------------------------
-// Each #fn / #en wraps Typst's native #footnote so page-pinning is handled
-// automatically. The body is prefixed with a metadata((stream, chapter))
-// tuple that survives the layout pass (verified via Probe 3 in
-// .factory/library/typst-notes.md).
+// Each public note-call wraps Typst's native #footnote so page-pinning is
+// handled automatically. The body is prefixed with a
+// metadata((stream, zone, chapter)) tuple that survives the layout pass
+// (verified via Probe 3 in .factory/library/typst-notes.md).
+//
+// M2 partition: the Python converter (python/convert.py) pre-splits each
+// block's fn / en stream into a column-fitting prefix and a spillover
+// remainder, and emits one of FOUR wrappers per note body:
+//
+//   #fn-col[body]   → right column of the 2-col apparatus (מקור השפע)
+//   #en-col[body]   → left  column of the 2-col apparatus (צינור השפע)
+//   #fn-spill[body] → full-width spillover row, fn overflow portion
+//   #en-spill[body] → full-width spillover row, en overflow portion
+//
+// The `zone` tag ("col" or "spill") is read by `_apparatus()` below to
+// partition per-page notes into the 2-col grid and the spillover row.
+// The `stream` tag ("fn" or "en") is still used for per-stream per-
+// chapter marker numbering (VAL-M1-005 / M1-006 / M1-008) — markers are
+// indexed by (stream, chapter) regardless of zone, so a note that
+// overflows into the spillover still gets the next letter in its stream.
 //
 // Chapter number comes from _chapter-num-state and is resolved at call time
 // via a context wrapper. A <plain-line> tag is also emitted at the call
 // site (i.e. in the body paragraph), carrying the note's plain text so the
 // Typst-side logical-order dump stays in sync with rendered content.
-#let fn(body) = {
+#let fn-col(body) = {
   _emit-plain("[FN] " + _content-text(body))
   context {
-    footnote([#metadata(("fn", _chapter-num-state.get())) #body])
+    footnote([#metadata(("fn", "col", _chapter-num-state.get())) #body])
   }
 }
-#let en(body) = {
+#let en-col(body) = {
   _emit-plain("[EN] " + _content-text(body))
   context {
-    footnote([#metadata(("en", _chapter-num-state.get())) #body])
+    footnote([#metadata(("en", "col", _chapter-num-state.get())) #body])
   }
 }
+#let fn-spill(body) = {
+  _emit-plain("[FN] " + _content-text(body))
+  context {
+    footnote([#metadata(("fn", "spill", _chapter-num-state.get())) #body])
+  }
+}
+#let en-spill(body) = {
+  _emit-plain("[EN] " + _content-text(body))
+  context {
+    footnote([#metadata(("en", "spill", _chapter-num-state.get())) #body])
+  }
+}
+
+// Spillover continuation wrappers: used when the Python converter has
+// SPLIT a single over-long note so its head goes in the column and its
+// tail flows into the spillover. The tail keeps the same stream tag
+// but uses zone tag "spill-cont" so the apparatus knows to render it
+// WITHOUT a marker (the head already carries the note's sole marker).
+// The counter helpers (_compute-labels, show-footnote) also treat
+// "spill-cont" as a non-incrementing entry so markers stay contiguous.
+#let fn-spill-cont(body) = {
+  _emit-plain("[FN] " + _content-text(body))
+  context {
+    footnote([#metadata(("fn", "spill-cont", _chapter-num-state.get())) #body])
+  }
+}
+#let en-spill-cont(body) = {
+  _emit-plain("[EN] " + _content-text(body))
+  context {
+    footnote([#metadata(("en", "spill-cont", _chapter-num-state.get())) #body])
+  }
+}
+
+// Back-compat shims: legacy M1 callers (probes, bare-template examples)
+// that emit #fn / #en still work, mapping to the column zone by default.
+// The generated book.typ from convert.py uses only the six new wrappers.
+#let fn(body) = fn-col(body)
+#let en(body) = en-col(body)
 
 // ------------------------------ Body wrapper -------------------------------
 #let body(content) = {
@@ -276,18 +330,31 @@
 }
 
 // ------------------------------ Notes apparatus helpers --------------------
-// Extract (stream, chapter) tuple from a queried footnote element. The body
-// is a sequence whose first child is `metadata((stream, chapter))`.
+// Extract (stream, zone, chapter) tuple from a queried footnote element.
+// The body is a sequence whose first child is
+// `metadata((stream, zone, chapter))`.
+//
+// Backwards-compatible: if the metadata is a 2-tuple (legacy M1
+// emission), return (stream, "col", chapter) so a single implementation
+// can migrate in-place without breaking existing probes.
 #let _note-meta(n) = {
   let c = n.body.children
   if c.len() > 0 and c.first().func() == metadata and type(c.first().value) == array {
-    c.first().value
+    let v = c.first().value
+    if v.len() >= 3 {
+      (v.at(0), v.at(1), v.at(2))
+    } else if v.len() == 2 {
+      (v.at(0), "col", v.at(1))
+    } else {
+      ("fn", "col", 0)
+    }
   } else {
-    ("fn", 0)
+    ("fn", "col", 0)
   }
 }
-#let _stream-of(n) = _note-meta(n).at(0)
-#let _chapter-of(n) = _note-meta(n).at(1)
+#let _stream-of(n)  = _note-meta(n).at(0)
+#let _zone-of(n)    = _note-meta(n).at(1)
+#let _chapter-of(n) = _note-meta(n).at(2)
 
 // Extract plain-text body content (skipping metadata + leading space).
 // Walks the children tree recursively to accumulate any `text` leaves.
@@ -314,34 +381,69 @@
   out
 }
 
-// Given a note and a parallel list of all notes in document order, compute
-// its 1-based index within its (stream, chapter) cohort.
+// Extract the renderable content (metadata + leading space stripped) from
+// a footnote node. Used by the apparatus to lay out the note body inside
+// the appropriate visual region (column or spillover row).
+#let _note-render-content(n) = n.body.children.slice(2).join()
+
+// Given a note and a parallel list of all notes in document order,
+// compute its 1-based index within its (stream, chapter) cohort. The
+// ``col`` / ``spill`` zones both increment the per-stream counter, so
+// a note that overflows into the spillover zone still gets the next
+// letter in its stream. The ``spill-cont`` zone — used for the tail
+// of a SPLIT first note — is treated as a non-marker continuation: it
+// inherits the marker of its preceding ``col`` head (same (stream,
+// chapter) cohort) and does NOT advance the counter.
+//
+// labels.at(i) is 0 for continuation entries (sentinel — validators
+// and renderers check the zone tag and skip marker emission when
+// zone == "spill-cont").
 #let _compute-labels(all-notes) = {
   let counters = (:)
   let labels = ()
   for n in all-notes {
     let st = _stream-of(n)
+    let zn = _zone-of(n)
     let ch = _chapter-of(n)
     let key = st + "-" + str(ch)
-    let cur = counters.at(key, default: 0) + 1
-    counters.insert(key, cur)
-    labels.push(cur)
+    if zn == "spill-cont" {
+      // Continuation entry — inherit counter value of the previous
+      // head (do NOT increment). Label 0 sentinel flags "no marker".
+      labels.push(0)
+    } else {
+      let cur = counters.at(key, default: 0) + 1
+      counters.insert(key, cur)
+      labels.push(cur)
+    }
   }
   labels
 }
 
-// Render one note: [מָרְכֵּר] note body text (wrapped as a compact grid row).
+// Render one note: [מָרְכֵּר] note body text (wrapped as a compact grid
+// row). When ``marker == 0`` (continuation sentinel from _compute-
+// labels), the [letter] cell is replaced by an empty 0pt column so the
+// body aligns flush-left, matching the reference scans' split-note
+// continuation pattern.
 #let _render-note(marker, note-body) = {
-  grid(
-    columns: (auto, 1fr),
-    column-gutter: 4pt,
-    text(size: 8pt)[[#hebrew-numeral(marker)]],
-    note-body,
-  )
-  v(2pt)
+  if marker == 0 {
+    // Continuation — no in-apparatus marker. Flow the body directly.
+    note-body
+    v(2pt)
+  } else {
+    grid(
+      columns: (auto, 1fr),
+      column-gutter: 4pt,
+      text(size: 8pt)[[#hebrew-numeral(marker)]],
+      note-body,
+    )
+    v(2pt)
+  }
 }
 
-// Render the stream of notes for a single column.
+// Render the stream of notes for a single column. Commentary type —
+// PFT_Vilna 9pt — matches the reference scans' apparatus typography and
+// is deliberately identical to the spillover row below it (VAL-M2-007
+// typography parity).
 #let _render-stream(notes, labels, all-notes-loc) = {
   set text(font: font-notes, size: 9pt, dir: rtl, lang: "he")
   set par(justify: true, leading: 0.58em, first-line-indent: 0em,
@@ -349,9 +451,35 @@
   for n in notes {
     let i = all-notes-loc.position(loc => loc == n.location())
     let marker = labels.at(i)
-    // Skip metadata tag + leading space when rendering (slice from index 2).
-    let body-content = n.body.children.slice(2).join()
-    _render-note(marker, body-content)
+    _render-note(marker, _note-render-content(n))
+  }
+}
+
+// Render the full-width spillover row. Typography matches _render-stream
+// above (PFT_Vilna 9pt, same leading / justification) so the transition
+// from the 2-col grid into the spillover is seamless — no visible type
+// jump (VAL-M2-007).
+//
+// Called with the fn-spill(+cont) notes FIRST, then the en-spill(+cont)
+// notes. When both are non-empty, fn overflow precedes en overflow in
+// the rendered stream (VAL-M2-003). Regular spill entries get the next
+// [letter] marker in their (stream, chapter) cohort; continuation
+// entries (``spill-cont``, marker == 0) render marker-less, flowing as
+// a natural continuation of their head in the column above.
+#let _render-spillover(fn-spill, en-spill, labels, all-notes-loc) = {
+  // PFT_Vilna 9pt — commentary font at the same size as the 2-col grid.
+  set text(font: font-notes, size: 9pt, dir: rtl, lang: "he")
+  set par(justify: true, leading: 0.58em, first-line-indent: 0em,
+          spacing: 0.25em)
+  for n in fn-spill {
+    let i = all-notes-loc.position(loc => loc == n.location())
+    let marker = labels.at(i)
+    _render-note(marker, _note-render-content(n))
+  }
+  for n in en-spill {
+    let i = all-notes-loc.position(loc => loc == n.location())
+    let marker = labels.at(i)
+    _render-note(marker, _note-render-content(n))
   }
 }
 
@@ -373,18 +501,45 @@
 #let _note-gutter = 8mm
 
 // The apparatus renderer — pulls all notes on the current render page,
-// partitions by stream, and emits either a single-column Case A or a
-// 2-column Case B layout. On pages with no notes (e.g. chapter-opener
-// pages where the first note falls on the next page), emit a thin
-// decorative rule so the notes-zone band is visually consistent.
+// partitions by (stream, zone), and emits:
+//
+//   1. the 2-column grid for notes tagged zone == "col"
+//      (right = מקור השפע / fn, left = צינור השפע / en), with the
+//      appropriate rule-header(s) depending on which streams appear;
+//   2. directly below, a full-width spillover row for notes tagged
+//      zone == "spill", rendered in the same commentary type (PFT_Vilna
+//      9pt) so the transition is typographically seamless
+//      (VAL-M2-002 / M2-007). fn-spill notes precede en-spill notes,
+//      preserving stream order (VAL-M2-003).
+//
+// Spillover is ONLY rendered alongside at least one column note
+// (VAL-M2-008). On pages with no notes at all, a thin decorative rule
+// keeps the notes-zone band visually consistent with the rest of the
+// book (and makes the audit's dark-row heuristic trigger predictably).
+//
+// Body-text position does NOT shift on spillover pages: the apparatus
+// renders into the pre-reserved 75mm bottom margin (see `set page(
+// margin: (bottom: 75mm))` in `book`), and spillover fills the lower
+// half of that band without pushing the body frame upward
+// (VAL-M2-010).
 #let _apparatus() = context {
   let pg = here().page()
   let all-notes = query(footnote)
   let labels = _compute-labels(all-notes)
   let all-locs = all-notes.map(n => n.location())
   let notes-here = all-notes.filter(n => n.location().page() == pg)
-  let fns = notes-here.filter(n => _stream-of(n) == "fn")
-  let ens = notes-here.filter(n => _stream-of(n) == "en")
+
+  // Partition by (stream, zone). ``spill`` and ``spill-cont`` both
+  // belong to the spillover zone — continuations are markerless tails
+  // of a col-head note but render in the same full-width band.
+  let _is-spill(n) = _zone-of(n) == "spill" or _zone-of(n) == "spill-cont"
+  let fn-col-notes   = notes-here.filter(n => _stream-of(n) == "fn" and _zone-of(n) == "col")
+  let en-col-notes   = notes-here.filter(n => _stream-of(n) == "en" and _zone-of(n) == "col")
+  let fn-spill-notes = notes-here.filter(n => _stream-of(n) == "fn" and _is-spill(n))
+  let en-spill-notes = notes-here.filter(n => _stream-of(n) == "en" and _is-spill(n))
+
+  let has-col-notes = fn-col-notes.len() + en-col-notes.len() > 0
+  let has-spillover = fn-spill-notes.len() + en-spill-notes.len() > 0
 
   v(0.4em)
   if notes-here.len() == 0 {
@@ -394,16 +549,32 @@
     align(center)[
       #line(length: 30%, stroke: 0.6pt + luma(35%))
     ]
-  } else if ens.len() == 0 {
-    // Case A: footnotes only — single centered header.
+  } else if not has-col-notes {
+    // Only spillover? VAL-M2-008 requires spillover to appear ONLY
+    // alongside at least one column note. Defensive branch: if the
+    // partitioner somehow produces spill-only, fall back to rendering
+    // those notes in a single centered-header zone so nothing is lost.
     _rule-header([מקור השפע])
     v(0.3em)
-    block(width: 100%)[#_render-stream(fns, labels, all-locs)]
-  } else if fns.len() == 0 {
-    // Rare: endnotes only — single centered header.
+    block(width: 100%)[#_render-spillover(fn-spill-notes, en-spill-notes, labels, all-locs)]
+  } else if en-col-notes.len() == 0 and en-spill-notes.len() == 0 {
+    // Case A: footnotes only — single centered header, no left column.
+    _rule-header([מקור השפע])
+    v(0.3em)
+    block(width: 100%)[#_render-stream(fn-col-notes, labels, all-locs)]
+    if has-spillover {
+      v(0.4em)
+      block(width: 100%)[#_render-spillover(fn-spill-notes, en-spill-notes, labels, all-locs)]
+    }
+  } else if fn-col-notes.len() == 0 and fn-spill-notes.len() == 0 {
+    // Rare: endnotes only — single centered header, no right column.
     _rule-header([צינור השפע])
     v(0.3em)
-    block(width: 100%)[#_render-stream(ens, labels, all-locs)]
+    block(width: 100%)[#_render-stream(en-col-notes, labels, all-locs)]
+    if has-spillover {
+      v(0.4em)
+      block(width: 100%)[#_render-spillover(fn-spill-notes, en-spill-notes, labels, all-locs)]
+    }
   } else {
     // Case B: both streams — 2-col grid with two headers.
     // Under dir:rtl (set globally below), grid cell 0 → RIGHT, cell 2 → LEFT.
@@ -418,10 +589,14 @@
     grid(
       columns: (1fr, _note-gutter, 1fr),
       align: (top, center + top, top),
-      block(width: 100%)[#_render-stream(fns, labels, all-locs)],
+      block(width: 100%)[#_render-stream(fn-col-notes, labels, all-locs)],
       [],
-      block(width: 100%)[#_render-stream(ens, labels, all-locs)],
+      block(width: 100%)[#_render-stream(en-col-notes, labels, all-locs)],
     )
+    if has-spillover {
+      v(0.4em)
+      block(width: 100%)[#_render-spillover(fn-spill-notes, en-spill-notes, labels, all-locs)]
+    }
   }
 }
 
@@ -432,8 +607,16 @@
   body,
 ) = {
   set document(title: "Shefa Shlomo")
-  // Pre-reserve a generous bottom margin (~60mm) to house the apparatus.
-  // The apparatus is drawn into this region via `page(footer: …)`.
+  // Pre-reserve a 75mm bottom margin to house the 3-zone apparatus
+  // (2-col grid + full-width spillover). The value is fixed across ALL
+  // pages — not conditional on whether the page has spillover — so
+  // body-text position is identical whether or not spillover appears
+  // (VAL-M2-010). Matches the M1 baseline so the PDF page count stays
+  // at 15 (VAL-M2-005: page count ≤ baselines.m1.pdf_page_count = 15).
+  // Python's pre-partition (COL_CAPACITY_CHARS = 650 in convert.py)
+  // keeps the 2-col grid short enough to leave ~25–30mm of the bottom
+  // margin for the spillover row on heavy-note pages (block 48 fn id
+  // "22" ~1,551 chars, block 31 fn id "13" ~1,687 chars).
   set page(
     width: 170mm,
     height: 240mm,
@@ -453,14 +636,26 @@
   show footnote.entry: none
 
   // In-text marker: Hebrew bracket letter, indexed per (stream, chapter).
-  // Computed lazily via query(selector).before(here()).
+  // Computed lazily via query(selector).before(here()). The zone tag
+  // distinguishes markerless continuation entries (``spill-cont``)
+  // from regular notes: continuations emit NO in-text marker and don't
+  // advance the per-(stream, chapter) counter. Regular notes (``col``
+  // or ``spill``) each contribute +1 to the counter — so a note that
+  // overflows into the spillover still gets the next letter in its
+  // stream (VAL-M1-005 / M1-008).
   show footnote: it => context {
     let meta = _note-meta(it)
     let st = meta.at(0)
-    let ch = meta.at(1)
+    let zn = meta.at(1)
+    let ch = meta.at(2)
+    if zn == "spill-cont" {
+      // Continuation — no marker in body text (the head's marker is
+      // the note's sole in-text call-out).
+      return []
+    }
     let priors = query(selector(footnote).before(here())).filter(n => {
       let m = _note-meta(n)
-      m.at(0) == st and m.at(1) == ch
+      m.at(0) == st and m.at(2) == ch and m.at(1) != "spill-cont"
     })
     let idx = priors.len() + 1
     text(size: 0.72em, baseline: -0.35em)[[#hebrew-numeral(idx)]]
@@ -481,19 +676,30 @@
     let data = ()
     for n in all-notes {
       let st = _stream-of(n)
+      let zn = _zone-of(n)
       let ch = _chapter-of(n)
       let key = st + "-" + str(ch)
-      let idx = counters.at(key, default: 0) + 1
-      counters.insert(key, idx)
+      // Continuations share the preceding head's index — read it back
+      // from counters without incrementing.
+      let is-cont = zn == "spill-cont"
+      let idx = if is-cont {
+        counters.at(key, default: 0)
+      } else {
+        counters.at(key, default: 0) + 1
+      }
+      if not is-cont {
+        counters.insert(key, idx)
+      }
       let body-text = _note-body-text(n)
       let codepoints = body-text.clusters()
       let max = calc.min(25, codepoints.len())
       data.push((
         stream: st,
+        zone: zn,
         chapter: ch,
         page: n.location().page(),
         index_in_stream: idx,
-        marker: "[" + hebrew-numeral(idx) + "]",
+        marker: if is-cont { "" } else { "[" + hebrew-numeral(idx) + "]" },
         body_first_25chars: codepoints.slice(0, max).join(""),
       ))
     }
